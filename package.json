@@ -1,0 +1,19 @@
+{
+  "name": "reactiv",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "vitest",
+    "go": "tsx src/index.ts"
+  },
+  "keywords": [],
+  "author": "Chris Freeman",
+  "license": "ISC",
+  "dependencies": {
+    "tsx": "^3.12.1",
+    "typescript": "^4.9.3",
+    "vitest": "^0.25.2"
+  }
+}
