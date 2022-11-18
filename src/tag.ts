@@ -12,13 +12,13 @@ export function createTag(): Tag {
   };
 }
 
-export function consumeTag(t: Tag) {
+export function markDependency(t: Tag) {
   if (MANAGER.currentCompute) {
     MANAGER.currentCompute.add(t);
   }
 }
 
-export function dirtyTag(t: Tag) {
+export function markUpdate(t: Tag) {
   t[REVISION] = MANAGER.incrementVersion();
 
   MANAGER.effects.forEach((effect) => {

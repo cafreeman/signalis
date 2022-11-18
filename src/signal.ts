@@ -1,5 +1,4 @@
-import { consumeTag, createTag, dirtyTag, type Tag } from './tag';
-import { MANAGER } from './manager';
+import { markDependency, createTag, markUpdate, type Tag } from './tag';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
@@ -7,19 +6,19 @@ function baseEquality<T>(oldValue: T, newValue: T) {
   return oldValue === newValue;
 }
 
-export class Signal<T> {
+export class Signal<T = unknown> {
   #value: T;
-  #isEqual: Equality<T>;
-  #tag: Tag;
+  protected isEqual: Equality<T>;
+  protected tag: Tag;
 
   constructor(value: T, isEqual: Equality<T> = baseEquality) {
     this.#value = value;
-    this.#isEqual = isEqual;
-    this.#tag = createTag();
+    this.isEqual = isEqual;
+    this.tag = createTag();
   }
 
   get value() {
-    consumeTag(this.#tag);
+    markDependency(this.tag);
     return this.#value;
   }
 
@@ -28,9 +27,9 @@ export class Signal<T> {
   }
 
   set value(v: T) {
-    if (!this.#isEqual(this.#value, v)) {
+    if (!this.isEqual(this.#value, v)) {
       this.#value = v;
-      dirtyTag(this.#tag);
+      markUpdate(this.tag);
     }
   }
 }
