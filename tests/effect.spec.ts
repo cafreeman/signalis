@@ -39,22 +39,7 @@ describe('Effect', () => {
     expect(effectSpy).toHaveBeenCalledOnce();
   });
 
-  it.skip('prevents cycles', () => {
-    let foo = createSignal(0);
-
-    let spy = vi.fn(() => {
-      foo.value;
-      foo.value++;
-    });
-
-    createEffect(spy);
-
-    foo.value++;
-
-    expect(spy).toHaveBeenCalledOnce();
-  });
-
-  it.only('can dispose', () => {
+  it('can dispose', () => {
     let foo = createSignal(0);
 
     let effectSpy = vi.fn(() => {
@@ -72,5 +57,20 @@ describe('Effect', () => {
     foo.value++;
 
     expect(effectSpy).toHaveBeenCalledOnce();
+  });
+
+  it.only('prevents cycles', () => {
+    let foo = createSignal(0);
+
+    let spy = vi.fn(() => {
+      foo.value;
+      foo.value++;
+    });
+
+    createEffect(spy);
+
+    foo.value++;
+
+    expect(spy).toHaveBeenCalledOnce();
   });
 });

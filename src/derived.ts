@@ -1,5 +1,5 @@
 import { getMax, Tag } from './tag';
-import { GLOBAL_VERSION } from './version';
+import { MANAGER } from './manager';
 
 export class Derived<T> {
   #computeFn: () => T;
@@ -9,7 +9,7 @@ export class Derived<T> {
 
   constructor(compute: () => T) {
     this.#computeFn = compute;
-    this.#version = GLOBAL_VERSION.value;
+    this.#version = MANAGER.version;
     // Access the value immediately so we can cache the result and get reference to all the
     // dependent values
     this.value;
@@ -20,17 +20,17 @@ export class Derived<T> {
       return this.#prevResult;
     }
 
-    let prevCompute = GLOBAL_VERSION.currentComputation;
+    let prevCompute = MANAGER.currentCompute;
 
-    GLOBAL_VERSION.currentComputation = new Set();
+    MANAGER.currentCompute = new Set();
 
     try {
       this.#prevResult = this.#computeFn();
     } finally {
-      this.#prevTags = Array.from(GLOBAL_VERSION.currentComputation);
+      this.#prevTags = Array.from(MANAGER.currentCompute);
       this.#version = getMax(this.#prevTags);
 
-      GLOBAL_VERSION.currentComputation = prevCompute;
+      MANAGER.currentCompute = prevCompute;
     }
 
     return this.#prevResult;

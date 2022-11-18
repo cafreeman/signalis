@@ -1,4 +1,4 @@
-import { GLOBAL_VERSION } from './version';
+import { MANAGER } from './manager';
 
 export const REVISION = Symbol('Revision');
 
@@ -8,22 +8,24 @@ export type Tag = {
 
 export function createTag(): Tag {
   return {
-    [REVISION]: GLOBAL_VERSION.value,
+    [REVISION]: MANAGER.version,
   };
 }
 
 export function consumeTag(t: Tag) {
-  if (GLOBAL_VERSION.currentComputation) {
-    GLOBAL_VERSION.currentComputation.add(t);
+  if (MANAGER.currentCompute) {
+    MANAGER.currentCompute.add(t);
   }
 }
 
 export function dirtyTag(t: Tag) {
-  t[REVISION] = GLOBAL_VERSION.increment();
-  GLOBAL_VERSION.effects.forEach((effect) => {
+  t[REVISION] = MANAGER.incrementVersion();
+
+  MANAGER.effects.forEach((effect) => {
     effect.compute();
   });
-  GLOBAL_VERSION.onTagDirtied();
+
+  MANAGER.onTagDirtied();
 }
 
 export function getMax(tags: Array<Tag>) {
@@ -31,5 +33,5 @@ export function getMax(tags: Array<Tag>) {
 }
 
 export function setOnTagDirtied(fn: () => void) {
-  GLOBAL_VERSION.onTagDirtied = fn;
+  MANAGER.onTagDirtied = fn;
 }

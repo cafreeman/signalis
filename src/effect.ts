@@ -1,5 +1,5 @@
 import { getMax, Tag } from './tag';
-import { GLOBAL_VERSION } from './version';
+import { MANAGER } from './manager';
 
 export class Effect {
   #computeFn: () => void;
@@ -8,8 +8,8 @@ export class Effect {
 
   constructor(fn: () => void) {
     this.#computeFn = fn;
-    this.#version = GLOBAL_VERSION.value;
-    GLOBAL_VERSION.effects.add(this);
+    this.#version = MANAGER.version;
+    MANAGER.effects.add(this);
   }
 
   compute() {
@@ -17,22 +17,22 @@ export class Effect {
       return;
     }
 
-    let prevCompute = GLOBAL_VERSION.currentComputation;
+    let prevCompute = MANAGER.currentCompute;
 
-    GLOBAL_VERSION.currentComputation = new Set();
+    MANAGER.currentCompute = new Set();
 
     try {
       this.#computeFn();
     } finally {
-      this.#prevTags = Array.from(GLOBAL_VERSION.currentComputation);
+      this.#prevTags = Array.from(MANAGER.currentCompute);
       this.#version = getMax(this.#prevTags);
 
-      GLOBAL_VERSION.currentComputation = prevCompute;
+      MANAGER.currentCompute = prevCompute;
     }
   }
 
   dispose() {
-    return GLOBAL_VERSION.effects.delete(this);
+    return MANAGER.effects.delete(this);
   }
 }
 

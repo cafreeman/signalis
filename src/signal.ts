@@ -1,5 +1,5 @@
 import { consumeTag, createTag, dirtyTag, type Tag } from './tag';
-import { GLOBAL_VERSION } from './version';
+import { MANAGER } from './manager';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
