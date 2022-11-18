@@ -18,8 +18,17 @@ export class Effect {
     }
 
     let prevCompute = MANAGER.currentCompute;
-
     MANAGER.currentCompute = new Set();
+
+    if (MANAGER.batchIteration > 100) {
+      throw new Error('cycle detected.');
+    }
+
+    if (MANAGER.computeContext === this) {
+      MANAGER.batchIteration++;
+    }
+
+    MANAGER.computeContext = this;
 
     try {
       this.#computeFn();
@@ -28,6 +37,7 @@ export class Effect {
       this.#version = getMax(this.#prevTags);
 
       MANAGER.currentCompute = prevCompute;
+      MANAGER.computeContext = null;
     }
   }
 
@@ -36,7 +46,7 @@ export class Effect {
   }
 }
 
-export function createEffect(fn: () => void) {
+export function createEffect(fn: () => void): () => boolean {
   const effect = new Effect(fn);
   return effect.dispose.bind(effect);
 }

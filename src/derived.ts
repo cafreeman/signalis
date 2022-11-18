@@ -1,7 +1,7 @@
 import { getMax, Tag } from './tag';
 import { MANAGER } from './manager';
 
-export class Derived<T> {
+export class Derived<T = unknown> {
   #computeFn: () => T;
   #version: number;
   #prevResult: T;

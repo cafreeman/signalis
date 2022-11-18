@@ -59,18 +59,24 @@ describe('Effect', () => {
     expect(effectSpy).toHaveBeenCalledOnce();
   });
 
-  it.only('prevents cycles', () => {
+  it('catches cycles', () => {
     let foo = createSignal(0);
 
-    let spy = vi.fn(() => {
-      foo.value;
+    let iterationCount = 0;
+
+    const effectWrapper = () => {
+      createEffect(() => {
+        iterationCount++;
+        if (iterationCount > 200) {
+          throw new Error('test failed');
+        }
+        foo.value;
+        foo.value++;
+      });
+
       foo.value++;
-    });
+    };
 
-    createEffect(spy);
-
-    foo.value++;
-
-    expect(spy).toHaveBeenCalledOnce();
+    expect(effectWrapper).toThrowError(/cycle detected/);
   });
 });
