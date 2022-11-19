@@ -71,12 +71,18 @@ describe('Derived', () => {
 
     foo.value = 'bar';
 
-    console.log('ACCESSING UPPERCASE, SHOULD PULL ON FOO SIGNAL');
     expect(toUpperCase.value).toEqual('BAR');
-    console.log('ACCESSING LOWERCASE, SHOULD PULL ON UPPERCASE');
     expect(toLowerCase.value).toEqual('bar');
 
     expect(uppercaseSpy).toHaveBeenCalledTimes(2);
     expect(lowercaseSpy).toHaveBeenCalledTimes(2);
+
+    foo.value = 'baz';
+
+    expect(toUpperCase.value).toEqual('BAZ');
+    expect(toLowerCase.value).toEqual('baz');
+
+    expect(lowercaseSpy).toHaveBeenCalledTimes(3);
+    expect(uppercaseSpy).toHaveBeenCalledTimes(3);
   });
 });

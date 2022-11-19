@@ -9,6 +9,7 @@ class Manager {
   currentCompute: Set<Tag> | null = null;
   computeContext: Derived | Effect | null = null;
   effects = new Set<Effect>();
+  isEffectRunning = false;
 
   incrementVersion() {
     return ++this.#version;

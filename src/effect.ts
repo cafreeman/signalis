@@ -10,6 +10,7 @@ export class Effect {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
     MANAGER.effects.add(this);
+    this.compute();
   }
 
   compute() {
@@ -17,16 +18,10 @@ export class Effect {
       return;
     }
 
+    MANAGER.isEffectRunning = true;
+
     let prevCompute = MANAGER.currentCompute;
     MANAGER.currentCompute = new Set();
-
-    if (MANAGER.batchIteration > 100) {
-      throw new Error('cycle detected.');
-    }
-
-    if (MANAGER.computeContext === this) {
-      MANAGER.batchIteration++;
-    }
 
     MANAGER.computeContext = this;
 
@@ -37,7 +32,7 @@ export class Effect {
       this.#version = getMax(this.#prevTags);
 
       MANAGER.currentCompute = prevCompute;
-      MANAGER.computeContext = null;
+      MANAGER.isEffectRunning = false;
     }
   }
 

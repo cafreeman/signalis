@@ -19,11 +19,20 @@ export function markDependency(t: Tag) {
 }
 
 export function markUpdate(t: Tag) {
+  if (MANAGER.currentCompute?.has(t)) {
+    throw new Error('Cannot update a tag that has been used during a computation.');
+  }
+
   t[REVISION] = MANAGER.incrementVersion();
 
-  MANAGER.effects.forEach((effect) => {
-    effect.compute();
-  });
+  // If we run effects on *every* update, then we'll end up executing them > 1 times for every
+  // derived value that an effect depends on, since the effect will trigger a recompute of the
+  // derived value. Instead, we let the full pass over the effects happen once and only once.
+  if (!MANAGER.isEffectRunning) {
+    MANAGER.effects.forEach((effect) => {
+      effect.compute();
+    });
+  }
 
   MANAGER.onTagDirtied();
 }
