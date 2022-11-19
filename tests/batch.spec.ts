@@ -4,7 +4,7 @@ import { createDerived } from '../src/derived';
 import { createEffect } from '../src/effect';
 import { createSignal } from '../src/signal';
 
-describe.only('batch', () => {
+describe('batch', () => {
   test('batching with derived', () => {
     const todos = createSignal<Array<{ text: string }>>([]);
     const text = createSignal('blah');

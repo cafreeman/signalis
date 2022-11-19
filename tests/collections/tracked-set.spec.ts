@@ -2,7 +2,7 @@ import { createEffect } from '../../src/effect';
 import { describe, test, assert } from 'vitest';
 import { TrackedSet } from '../../src/collections/tracked-set';
 
-describe.only('Tracked Set', () => {
+describe('Tracked Set', () => {
   test('constructor', () => {
     const set = new TrackedSet(['foo', 123]);
 
