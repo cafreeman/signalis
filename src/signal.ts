@@ -11,9 +11,14 @@ export class Signal<T = unknown> {
   protected isEqual: Equality<T>;
   protected tag: Tag;
 
-  constructor(value: T, isEqual: Equality<T> = baseEquality) {
+  constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this.#value = value;
-    this.isEqual = isEqual;
+
+    if (isEqual === false) {
+      this.isEqual = () => false;
+    } else {
+      this.isEqual = isEqual;
+    }
     this.tag = createTag();
   }
 
@@ -34,6 +39,6 @@ export class Signal<T = unknown> {
   }
 }
 
-export function createSignal<T>(value: T, isEqual?: Equality<T>) {
+export function createSignal<T>(value: T, isEqual?: Equality<T> | false) {
   return new Signal(value, isEqual);
 }
