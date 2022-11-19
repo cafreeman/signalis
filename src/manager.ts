@@ -28,6 +28,12 @@ class Manager {
   batchEnd() {
     this.batchCount--;
   }
+
+  runEffects() {
+    this.effects.forEach((effect) => {
+      effect.compute();
+    });
+  }
 }
 
 export const MANAGER = new Manager();

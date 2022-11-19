@@ -29,9 +29,9 @@ export function markUpdate(t: Tag) {
   // derived value that an effect depends on, since the effect will trigger a recompute of the
   // derived value. Instead, we let the full pass over the effects happen once and only once.
   if (!MANAGER.isEffectRunning) {
-    MANAGER.effects.forEach((effect) => {
-      effect.compute();
-    });
+    if (MANAGER.batchCount === 0) {
+      MANAGER.runEffects();
+    }
   }
 
   MANAGER.onTagDirtied();

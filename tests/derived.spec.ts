@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { createSignal, createDerived } from '../src';
+import { createDerived, createSignal } from '../src';
 
 describe('Derived', () => {
   test('it reacts to signal changes', () => {
