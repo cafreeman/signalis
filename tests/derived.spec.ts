@@ -85,4 +85,47 @@ describe('Derived', () => {
     expect(lowercaseSpy).toHaveBeenCalledTimes(3);
     expect(uppercaseSpy).toHaveBeenCalledTimes(3);
   });
+
+  test('it can depend on arrays', () => {
+    let someArray = createSignal<Array<number>>([]);
+
+    let spy = vi.fn(() => {
+      return someArray.value.length;
+    });
+
+    let arrayLength = createDerived(spy);
+
+    expect(spy).toHaveBeenCalledOnce();
+
+    someArray.value.push(1);
+
+    expect(arrayLength.value).toEqual(0);
+    expect(spy).toHaveBeenCalledOnce();
+
+    someArray.value = [...someArray.value, 2];
+
+    expect(arrayLength.value).toEqual(2);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  test('it can depend on objects', () => {
+    let someObject = createSignal<Record<string, number>>({});
+
+    let spy = vi.fn(() => {
+      return Object.keys(someObject.value).length;
+    });
+
+    let arrayLength = createDerived(spy);
+
+    expect(spy).toHaveBeenCalledOnce();
+    someObject.value.a = 1;
+
+    expect(arrayLength.value).toEqual(0);
+    expect(spy).toHaveBeenCalledOnce();
+
+    someObject.value = { ...someObject.value, b: 2 };
+
+    expect(arrayLength.value).toEqual(2);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
 });
