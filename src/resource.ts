@@ -1,4 +1,3 @@
-import type { Derived } from './derived';
 import { createEffect } from './effect';
 import { createSignal, type Signal } from './signal';
 import { createTag, markDependency, markUpdate, type Tag } from './tag';
@@ -11,7 +10,7 @@ class Resource<ValueType> {
   private fetcher: Fetcher<ValueType>;
   private tag: Tag;
   loading = createSignal(false);
-  error?: unknown;
+  error: Signal<any> = createSignal();
 
   last?: ValueType | undefined;
 
@@ -32,8 +31,8 @@ class Resource<ValueType> {
       this.last = this.current;
       this.current = await this.fetcher(true);
       markUpdate(this.tag);
-    } catch (err) {
-      this.error = err;
+    } catch (err: any) {
+      this.error.value = err;
     } finally {
       this.loading.value = false;
     }
@@ -50,7 +49,7 @@ class ResourceWithSignal<ValueType, SourceType> {
   private source: ReactiveValue<SourceType>;
   private tag: Tag;
   loading = createSignal(false);
-  error?: unknown;
+  error: Signal<any> = createSignal();
 
   last?: ValueType | undefined;
 
@@ -80,7 +79,7 @@ class ResourceWithSignal<ValueType, SourceType> {
       this.current = await this.fetcher(source);
       markUpdate(this.tag);
     } catch (err) {
-      this.error = err;
+      this.error.value = err;
     } finally {
       this.loading.value = false;
     }

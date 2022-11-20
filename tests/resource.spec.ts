@@ -46,7 +46,7 @@ describe('Resource', () => {
       d.reject('error');
 
       await expect(d.promise).rejects.toThrow('error');
-      expect(resource.error).toEqual('error');
+      expect(resource.error?.value).toEqual('error');
       expect(resource.loading.value).toBe(false);
     });
   });
