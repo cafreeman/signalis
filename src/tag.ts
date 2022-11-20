@@ -37,8 +37,15 @@ export function markUpdate(t: Tag): void {
   MANAGER.onTagDirtied();
 }
 
-  return Math.max(...tags.map((t) => t[REVISION]));
 export function getMax(tags: Array<Tag>): number {
+  // We could also do a `.reduce()`; the key is to make sure we avoid ever running *multiple*
+  // passes on the set of tags. Doing multiple `Math.max()` checks should be cheaper, especially in
+  // terms of allocation, than doing the extra Array allocations.
+  let max = -1;
+  for (let tag of tags) {
+    max = Math.max(max, tag[REVISION]);
+  }
+  return max;
 }
 
 export function setOnTagDirtied(fn: () => void) {
