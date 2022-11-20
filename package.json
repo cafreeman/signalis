@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "Chris Freeman",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@tsconfig/node-lts-strictest": "^18.12.1",
     "@types/lodash": "^4.14.189",
