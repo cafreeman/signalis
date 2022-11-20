@@ -52,7 +52,7 @@ describe('Resource', () => {
   });
 
   describe('with source', () => {
-    test('it works', async () => {
+    test('it reruns on source update', async () => {
       const source = createSignal(0);
       const deferred = defer<number>();
 
@@ -61,6 +61,7 @@ describe('Resource', () => {
       });
 
       const resource = createResource(source, resourceSpy);
+      expect(resourceSpy).toHaveBeenCalledOnce();
 
       let message: number | undefined;
 
@@ -86,6 +87,38 @@ describe('Resource', () => {
       source.value = 2;
       expect(resourceSpy).toHaveBeenCalledTimes(3);
       expect(resourceSpy).toHaveBeenLastCalledWith(2);
+    });
+
+    test('it does not run when source is null, false, or undefined', async () => {
+      const source = createSignal<any>(null);
+      const deferred = defer<number>();
+
+      const resourceSpy = vi.fn(() => {
+        return deferred.promise;
+      });
+
+      const resource = createResource(source, resourceSpy);
+      // At this point, nothing should happen because the source is null
+      expect(resourceSpy).not.toHaveBeenCalled();
+      expect(resource.loading.value).toBe(false);
+
+      source.value = 1;
+
+      // Now that we've set the value to something eligible for a run, everything should suddenly
+      // start running
+      expect(resource.loading.value).toBe(true);
+      expect(resourceSpy).toHaveBeenCalledOnce();
+      expect(resourceSpy).toHaveBeenLastCalledWith(1);
+      deferred.resolve(0);
+      await expect(deferred.promise).resolves.toEqual(0);
+
+      source.value = false;
+
+      // updating the source to another ineligible value should not change anything, all the
+      // prior assertions should still pass
+      expect(resource.loading.value).toBe(false);
+      expect(resourceSpy).toHaveBeenCalledOnce();
+      expect(resourceSpy).toHaveBeenLastCalledWith(1);
     });
   });
 });

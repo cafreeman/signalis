@@ -64,7 +64,11 @@ class ResourceWithSignal<ValueType, SourceType> {
     this.source = source;
     this.tag = createTag();
     createEffect(() => {
-      this.fetch(this.source.value);
+      const value = this.source.value;
+      if (value === false || value === null || value === undefined) {
+        return;
+      }
+      this.fetch(value);
     }, [this.source]);
   }
 
