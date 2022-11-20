@@ -1,7 +1,6 @@
-import type { Derived } from './derived';
 import { MANAGER } from './manager';
-import type { Signal } from './signal';
 import { getMax, Tag } from './tag';
+import type { ReactiveValue } from './types';
 
 type ComputeFn = () => void | (() => void);
 
@@ -9,10 +8,14 @@ export class Effect {
   #computeFn: ComputeFn;
   #version: number;
   #prevTags?: Array<Tag>;
-  #deps?: Array<Signal<unknown> | Derived<unknown>> | undefined;
+  // I would like to *not* use `any` here, but it could *actually* be anything so i'm not sure
+  // if there's a better option
+  // TODO: use something better than any here
+  #deps?: Array<ReactiveValue<any>> | undefined;
   #cleanupFn?: () => void;
 
-  constructor(fn: ComputeFn, deps?: Array<Signal<unknown> | Derived<unknown>>) {
+  // TODO: use something better than any here
+  constructor(fn: ComputeFn, deps?: Array<ReactiveValue<any>>) {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
     this.#deps = deps;
@@ -70,10 +73,8 @@ export class Effect {
   }
 }
 
-export function createEffect(
-  fn: () => void,
-  deps?: Array<Signal<unknown> | Derived<unknown>>
-): () => boolean {
+// TODO: use something better than any here
+export function createEffect(fn: () => void, deps?: Array<ReactiveValue<any>>): () => boolean {
   const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
 }

@@ -51,11 +51,8 @@ export class Signal<T> {
 }
 
 export function createSignal(value?: null | undefined): Signal<null>;
-export function createSignal<T extends NonNullable<unknown>>(
-  value: T,
-  isEqual?: Equality<T> | false
-): Signal<T>;
-export function createSignal<T extends NonNullable<unknown>>(
+export function createSignal<T extends {}>(value: T, isEqual?: Equality<T> | false): Signal<T>;
+export function createSignal<T extends {}>(
   value?: T | null | undefined,
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<null> {
