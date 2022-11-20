@@ -28,10 +28,6 @@ export class Signal<T> {
     this.#tag = createTag();
   }
 
-  from<A>(value: A, isEqual: Equality<A> | false = baseEquality): Signal<A> {
-    return new Signal(value, isEqual);
-  }
-
   get value(): T {
     markDependency(this.#tag);
     return this.#value;
