@@ -1,5 +1,5 @@
 import { expect, describe, test, vi } from 'vitest';
-import { createSignal } from '../src/signal';
+import { createSignal, Peek } from '../src/signal';
 import { createEffect } from '../src/effect';
 import isEqual from 'lodash/isEqual';
 
@@ -50,7 +50,7 @@ describe('Signal', () => {
     let foo = createSignal('foo');
 
     let spy = vi.fn(() => {
-      foo.peek();
+      foo[Peek]();
     });
 
     createEffect(spy);
