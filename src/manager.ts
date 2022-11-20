@@ -1,5 +1,5 @@
-import { Effect } from './effect';
-import { Tag } from './tag';
+import type { Effect } from './effect';
+import type { Tag } from './tag';
 
 class Manager {
   #version = 0;
