@@ -1,6 +1,6 @@
 import { MANAGER } from './manager';
 
-export const REVISION = Symbol('Revision');
+const REVISION = Symbol('Revision');
 
 export type Tag = {
   [REVISION]: number;
