@@ -1,12 +1,16 @@
 lockfileVersion: 5.4
 
 specifiers:
+  '@tsconfig/node-lts-strictest': ^18.12.1
+  '@types/lodash': ^4.14.189
   lodash: ^4.17.21
   tsx: ^3.12.1
   typescript: ^4.9.3
   vitest: ^0.25.2
 
 devDependencies:
+  '@tsconfig/node-lts-strictest': 18.12.1
+  '@types/lodash': 4.14.189
   lodash: 4.17.21
   tsx: 3.12.1
   typescript: 4.9.3
@@ -53,6 +57,10 @@ packages:
     dev: true
     optional: true
 
+  /@tsconfig/node-lts-strictest/18.12.1:
+    resolution: {integrity: sha512-pn6cefRFlBVSEo5lO82bJnGmaptr90Wu8zCROkMUYXEz0f4AgCD65Guhq4u3PIuIlsYImaOmdoiHajx1gVTiQw==}
+    dev: true
+
   /@types/chai-subset/1.3.3:
     resolution: {integrity: sha512-frBecisrNGz+F4T6bcc+NLeolfiojh5FxW2klu669+8BARtyQv2C/GkNW6FUodVe4BroGMP/wER/YDGc7rEllw==}
     dependencies:
@@ -61,6 +69,10 @@ packages:
 
   /@types/chai/4.3.4:
     resolution: {integrity: sha512-KnRanxnpfpjUTqTCXslZSEdLfXExwgNxYPdiO2WGUj8+HDjFi8R3k5RVKPeSCzLjCcshCAtVO2QBbVuAV4kTnw==}
+    dev: true
+
+  /@types/lodash/4.14.189:
+    resolution: {integrity: sha512-kb9/98N6X8gyME9Cf7YaqIMvYGnBSWqEci6tiettE6iJWH1XdJz/PO8LB0GtLCG7x8dU3KWhZT+lA1a35127tA==}
     dev: true
 
   /@types/node/18.11.9:

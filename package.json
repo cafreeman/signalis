@@ -12,9 +12,15 @@
   "author": "Chris Freeman",
   "license": "ISC",
   "devDependencies": {
+    "@tsconfig/node-lts-strictest": "^18.12.1",
+    "@types/lodash": "^4.14.189",
     "lodash": "^4.17.21",
     "tsx": "^3.12.1",
     "typescript": "^4.9.3",
     "vitest": "^0.25.2"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true
   }
 }

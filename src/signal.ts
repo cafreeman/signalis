@@ -6,39 +6,59 @@ function baseEquality<T>(oldValue: T, newValue: T) {
   return oldValue === newValue;
 }
 
-export class Signal<T = unknown> {
+/**
+  @private This is available for internal "friend" APIs to use, but it is *not*
+    legal to use by consumers.
+ */
+export const Peek = Symbol('Peek');
+
+export class Signal<T> {
   #value: T;
-  protected isEqual: Equality<T>;
-  protected tag: Tag;
+  #isEqual: Equality<T>;
+  #tag: Tag;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this.#value = value;
 
     if (isEqual === false) {
-      this.isEqual = () => false;
+      this.#isEqual = () => false;
     } else {
-      this.isEqual = isEqual;
+      this.#isEqual = isEqual;
     }
-    this.tag = createTag();
+    this.#tag = createTag();
   }
 
-  get value() {
-    markDependency(this.tag);
+  get value(): T {
+    markDependency(this.#tag);
     return this.#value;
   }
 
-  peek() {
+  // Expressly *not* part of the public API: peeking a value in contexts other than internal parts
+  // of the reactivity system itself tends very strongly to produce bugs, because it decouples
+  // consumers from the root state. (It is very, very tempting to wire your own caching on with a
+  // "peek", rather than using caching tools composed out of the core primitives, or to "be smarter"
+  // than the signal system.)
+  [Peek](): T {
     return this.#value;
   }
 
   set value(v: T) {
-    if (!this.isEqual(this.#value, v)) {
+    if (!this.#isEqual(this.#value, v)) {
       this.#value = v;
-      markUpdate(this.tag);
+      markUpdate(this.#tag);
     }
   }
 }
 
-export function createSignal<T>(value: T, isEqual?: Equality<T> | false) {
+export function createSignal(value?: null | undefined): Signal<null>;
+export function createSignal<T extends {}>(value: T, isEqual?: Equality<T> | false): Signal<T>;
+export function createSignal<T extends {}>(
+  value?: T | null | undefined,
+  isEqual?: Equality<T> | false
+): Signal<T> | Signal<null> {
+  if (value == null) {
+    return new Signal(null);
+  }
+
   return new Signal(value, isEqual);
 }

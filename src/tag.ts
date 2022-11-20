@@ -1,6 +1,6 @@
 import { MANAGER } from './manager';
 
-export const REVISION = Symbol('Revision');
+const REVISION = Symbol('Revision');
 
 export type Tag = {
   [REVISION]: number;
@@ -12,13 +12,13 @@ export function createTag(): Tag {
   };
 }
 
-export function markDependency(t: Tag) {
+export function markDependency(t: Tag): void {
   if (MANAGER.currentCompute) {
     MANAGER.currentCompute.add(t);
   }
 }
 
-export function markUpdate(t: Tag) {
+export function markUpdate(t: Tag): void {
   if (MANAGER.currentCompute?.has(t)) {
     throw new Error('Cannot update a tag that has been used during a computation.');
   }
@@ -37,8 +37,15 @@ export function markUpdate(t: Tag) {
   MANAGER.onTagDirtied();
 }
 
-export function getMax(tags: Array<Tag>) {
-  return Math.max(...tags.map((t) => t[REVISION]));
+export function getMax(tags: Array<Tag>): number {
+  // We could also do a `.reduce()`; the key is to make sure we avoid ever running *multiple*
+  // passes on the set of tags. Doing multiple `Math.max()` checks should be cheaper, especially in
+  // terms of allocation, than doing the extra Array allocations.
+  let max = -1;
+  for (let tag of tags) {
+    max = Math.max(max, tag[REVISION]);
+  }
+  return max;
 }
 
 export function setOnTagDirtied(fn: () => void) {

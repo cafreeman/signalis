@@ -1,6 +1,6 @@
-import { type Derived } from './derived';
+import type { Derived } from './derived';
 import { MANAGER } from './manager';
-import { type Signal } from './signal';
+import type { Signal } from './signal';
 import { getMax, Tag } from './tag';
 
 type ComputeFn = () => void | (() => void);
@@ -8,11 +8,11 @@ type ComputeFn = () => void | (() => void);
 export class Effect {
   #computeFn: ComputeFn;
   #version: number;
-  #prevTags: Array<Tag>;
-  #deps?: Array<Signal | Derived>;
+  #prevTags?: Array<Tag>;
+  #deps?: Array<Signal<unknown> | Derived<unknown>> | undefined;
   #cleanupFn?: () => void;
 
-  constructor(fn: ComputeFn, deps?: Array<Signal | Derived>) {
+  constructor(fn: ComputeFn, deps?: Array<Signal<unknown> | Derived<unknown>>) {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
     this.#deps = deps;
@@ -24,17 +24,17 @@ export class Effect {
     }
   }
 
-  get hasDeps() {
-    return this.#deps && this.#deps.length > 0;
+  get hasDeps(): boolean {
+    return this.#deps ? this.#deps.length > 0 : false;
   }
 
-  #computeDeps() {
+  #computeDeps(): void {
     if (this.#deps) {
       this.#deps.forEach((dep) => dep.value);
     }
   }
 
-  compute() {
+  compute(): (() => void) | void {
     let prevCompute = MANAGER.currentCompute;
     MANAGER.currentCompute = new Set();
     MANAGER.runningEffect = this;
@@ -47,7 +47,7 @@ export class Effect {
       return;
     }
 
-    let result: ReturnType<ComputeFn>;
+    let result: (() => void) | void;
 
     try {
       result = this.#computeFn();
@@ -62,7 +62,7 @@ export class Effect {
     return result;
   }
 
-  dispose() {
+  dispose(): boolean {
     if (this.#cleanupFn) {
       this.#cleanupFn();
     }
@@ -70,7 +70,10 @@ export class Effect {
   }
 }
 
-export function createEffect(fn: () => void, deps?: Array<Signal | Derived>): () => boolean {
+export function createEffect(
+  fn: () => void,
+  deps?: Array<Signal<unknown> | Derived<unknown>>
+): () => boolean {
   const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
 }

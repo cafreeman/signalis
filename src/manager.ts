@@ -1,5 +1,5 @@
-import { Effect } from './effect';
-import { Tag } from './tag';
+import type { Effect } from './effect';
+import type { Tag } from './tag';
 
 class Manager {
   #version = 0;
@@ -9,29 +9,29 @@ class Manager {
   runningEffect: Effect | null = null;
   effects = new Set<Effect>();
 
-  get isEffectRunning() {
+  get isEffectRunning(): boolean {
     return !!this.runningEffect;
   }
 
-  incrementVersion() {
+  incrementVersion(): number {
     return ++this.#version;
   }
 
-  get version() {
+  get version(): number {
     return this.#version;
   }
 
   onTagDirtied = () => {};
 
-  batchStart() {
+  batchStart(): void {
     this.batchCount++;
   }
 
-  batchEnd() {
+  batchEnd(): void {
     this.batchCount--;
   }
 
-  runEffects() {
+  runEffects(): void {
     this.effects.forEach((effect) => {
       effect.compute();
     });
