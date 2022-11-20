@@ -1,17 +1,18 @@
-import { markDependency, markUpdate, getMax, Tag } from './tag';
+import { markDependency, markUpdate, getMax, Tag, createTag } from './tag';
 import { MANAGER } from './manager';
-import { Signal } from './signal';
 
-export class Derived<T = unknown> extends Signal {
+export class Derived<T> {
   #computeFn: () => T;
   #version: number;
   #prevResult: T;
   #prevTags: Array<Tag>;
 
+  #tag: Tag;
+
   constructor(compute: () => T) {
-    super(null);
     this.#computeFn = compute;
     this.#version = MANAGER.version;
+    this.#tag = createTag();
 
     // Access the value immediately so we can cache the result and get reference to all the
     // dependent values
@@ -21,7 +22,7 @@ export class Derived<T = unknown> extends Signal {
   get value(): T {
     // No matter what, we call `markDependency` immediately so that this derived value gets
     // identified as a dependency of whoever accessed it no matter what
-    markDependency(this.tag);
+    markDependency(this.#tag);
 
     if (this.#prevTags && getMax(this.#prevTags) === this.#version) {
       // Even if this derived value doesn't need to recompute, we want to make sure that its
@@ -49,7 +50,11 @@ export class Derived<T = unknown> extends Signal {
 
     try {
       let result = this.#computeFn();
-      if (!this.isEqual(this.#prevResult, result)) {
+
+      // For now, we hard code this as `===` equality, and if we later introduce the ability for
+      // users to get the previous value as part of the computation, *that* would be where they
+      // can do custom equality handling, rather than needing a comparison function like `Signal`.
+      if (this.#prevResult !== result) {
         shouldMarkUpdate = true;
       }
       this.#prevResult = result;
@@ -74,7 +79,7 @@ export class Derived<T = unknown> extends Signal {
       }
 
       if (shouldMarkUpdate) {
-        markUpdate(this.tag);
+        markUpdate(this.#tag);
       }
 
       MANAGER.currentCompute = prevCompute;
@@ -83,7 +88,7 @@ export class Derived<T = unknown> extends Signal {
     return this.#prevResult;
   }
 
-  set value(v: T) {
+  set value(_v: T) {
     throw new Error('derived values are readonly');
   }
 }

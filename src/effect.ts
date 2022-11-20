@@ -9,10 +9,10 @@ export class Effect {
   #computeFn: ComputeFn;
   #version: number;
   #prevTags: Array<Tag>;
-  #deps?: Array<Signal | Derived>;
+  #deps?: Array<Signal<unknown> | Derived<unknown>>;
   #cleanupFn?: () => void;
 
-  constructor(fn: ComputeFn, deps?: Array<Signal | Derived>) {
+  constructor(fn: ComputeFn, deps?: Array<Signal<unknown> | Derived<unknown>>) {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
     this.#deps = deps;
@@ -70,7 +70,10 @@ export class Effect {
   }
 }
 
-export function createEffect(fn: () => void, deps?: Array<Signal | Derived>): () => boolean {
+export function createEffect(
+  fn: () => void,
+  deps?: Array<Signal<unknown> | Derived<unknown>>
+): () => boolean {
   const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
 }
