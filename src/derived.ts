@@ -53,7 +53,7 @@ export class Derived<T> {
     let shouldMarkUpdate = false;
 
     try {
-      let result = this.#computeFn();
+      const result = this.#computeFn();
 
       // For now, we hard code this as `===` equality, and if we later introduce the ability for
       // users to get the previous value as part of the computation, *that* would be where they

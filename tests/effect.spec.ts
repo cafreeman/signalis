@@ -4,9 +4,9 @@ import { createEffect } from '../src/effect';
 
 describe('Effect', () => {
   test('it works', () => {
-    let foo = createSignal(0);
+    const foo = createSignal(0);
 
-    let effectSpy = vi.fn(() => {
+    const effectSpy = vi.fn(() => {
       foo.value;
     });
 
@@ -24,15 +24,15 @@ describe('Effect', () => {
   });
 
   test('it works with derived values', () => {
-    let foo = createSignal('foo');
+    const foo = createSignal('foo');
 
-    let uppercase = createDerived(() => {
+    const uppercase = createDerived(() => {
       return foo.value.toUpperCase();
     });
 
     let effectValue = '';
 
-    let effectSpy = vi.fn(() => {
+    const effectSpy = vi.fn(() => {
       effectValue = uppercase.value;
     });
 
@@ -52,9 +52,9 @@ describe('Effect', () => {
   });
 
   test('it only recomputes when its direct dependencies have actually changed', () => {
-    let foo = createSignal(0);
+    const foo = createSignal(0);
 
-    let isOdd = createDerived(() => {
+    const isOdd = createDerived(() => {
       return foo.value % 2 !== 0;
     });
 
@@ -76,8 +76,8 @@ describe('Effect', () => {
   });
 
   test('it works with multiple derived values', () => {
-    let firstName = createSignal('john');
-    let lastName = createSignal('smith');
+    const firstName = createSignal('john');
+    const lastName = createSignal('smith');
 
     const firstNameUppercase = createDerived(() => {
       return firstName.value.toUpperCase();
@@ -109,14 +109,14 @@ describe('Effect', () => {
   });
 
   test('it only recomputes when relevant dependencies have changed', () => {
-    let foo = createSignal('foo');
-    let bar = createSignal('bar');
+    const foo = createSignal('foo');
+    const bar = createSignal('bar');
 
-    let uppercaseFoo = createDerived(() => {
+    const uppercaseFoo = createDerived(() => {
       return foo.value.toUpperCase();
     });
 
-    let uppercaseBar = createDerived(() => {
+    const uppercaseBar = createDerived(() => {
       return bar.value.toUpperCase();
     });
 
@@ -146,9 +146,9 @@ describe('Effect', () => {
   });
 
   test('can dispose', () => {
-    let foo = createSignal(0);
+    const foo = createSignal(0);
 
-    let effectSpy = vi.fn(() => {
+    const effectSpy = vi.fn(() => {
       foo.value;
     });
 
@@ -166,11 +166,11 @@ describe('Effect', () => {
   });
 
   test('can dispose with a custom cleanup function', () => {
-    let foo = createSignal(0);
+    const foo = createSignal(0);
 
     let didCleanup = false;
 
-    let effectSpy = vi.fn(() => {
+    const effectSpy = vi.fn(() => {
       foo.value;
       return () => {
         didCleanup = true;
@@ -193,7 +193,7 @@ describe('Effect', () => {
   });
 
   test('prevents you from mutating dependencies inside of an effect in order to prevent cycles', () => {
-    let foo = createSignal(0);
+    const foo = createSignal(0);
 
     const effectWrapper = () => {
       createEffect(() => {

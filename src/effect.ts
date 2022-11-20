@@ -35,7 +35,7 @@ export class Effect {
   }
 
   compute(): (() => void) | void {
-    let prevCompute = MANAGER.currentCompute;
+    const prevCompute = MANAGER.currentCompute;
     MANAGER.currentCompute = new Set();
     MANAGER.runningEffect = this;
 
