@@ -1,6 +1,6 @@
-import { type Derived } from './derived';
+import type { Derived } from './derived';
 import { MANAGER } from './manager';
-import { type Signal } from './signal';
+import type { Signal } from './signal';
 import { getMax, Tag } from './tag';
 
 type ComputeFn = () => void | (() => void);
@@ -8,8 +8,8 @@ type ComputeFn = () => void | (() => void);
 export class Effect {
   #computeFn: ComputeFn;
   #version: number;
-  #prevTags: Array<Tag>;
-  #deps?: Array<Signal<unknown> | Derived<unknown>>;
+  #prevTags?: Array<Tag>;
+  #deps?: Array<Signal<unknown> | Derived<unknown>> | undefined;
   #cleanupFn?: () => void;
 
   constructor(fn: ComputeFn, deps?: Array<Signal<unknown> | Derived<unknown>>) {
@@ -34,7 +34,7 @@ export class Effect {
     }
   }
 
-  compute(): void {
+  compute(): (() => void) | void {
     let prevCompute = MANAGER.currentCompute;
     MANAGER.currentCompute = new Set();
     MANAGER.runningEffect = this;
@@ -47,7 +47,7 @@ export class Effect {
       return;
     }
 
-    let result: ReturnType<ComputeFn>;
+    let result: (() => void) | void;
 
     try {
       result = this.#computeFn();

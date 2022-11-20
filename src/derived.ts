@@ -4,8 +4,8 @@ import { MANAGER } from './manager';
 export class Derived<T> {
   #computeFn: () => T;
   #version: number;
-  #prevResult: T;
-  #prevTags: Array<Tag>;
+  #prevResult?: T;
+  #prevTags?: Array<Tag>;
 
   #tag: Tag;
 
@@ -35,7 +35,11 @@ export class Derived<T> {
           });
         }
       }
-      return this.#prevResult;
+
+      // SAFETY: we know by having checked for `#prevTags` and the current version that this
+      // will be set. TODO: can we encode that into the type so that we *know* it's the case
+      // simply by having checked? Should be able to!
+      return this.#prevResult as T;
     }
 
     let prevCompute = MANAGER.currentCompute;
