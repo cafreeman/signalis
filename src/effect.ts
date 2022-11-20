@@ -3,18 +3,25 @@ import { MANAGER } from './manager';
 import { type Signal } from './signal';
 import { getMax, Tag } from './tag';
 
+type ComputeFn = () => void | (() => void);
+
 export class Effect {
-  #computeFn: () => void;
+  #computeFn: ComputeFn;
   #version: number;
   #prevTags: Array<Tag>;
   #deps?: Array<Signal | Derived>;
+  #cleanupFn?: () => void;
 
-  constructor(fn: () => void, deps?: Array<Signal | Derived>) {
+  constructor(fn: ComputeFn, deps?: Array<Signal | Derived>) {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
     this.#deps = deps;
     MANAGER.effects.add(this);
-    this.compute();
+    const maybeCleanupFn = this.compute();
+
+    if (typeof maybeCleanupFn === 'function') {
+      this.#cleanupFn = maybeCleanupFn;
+    }
   }
 
   get hasDeps() {
@@ -40,8 +47,10 @@ export class Effect {
       return;
     }
 
+    let result: ReturnType<ComputeFn>;
+
     try {
-      this.#computeFn();
+      result = this.#computeFn();
     } finally {
       this.#prevTags = Array.from(MANAGER.currentCompute);
       this.#version = getMax(this.#prevTags);
@@ -49,9 +58,14 @@ export class Effect {
       MANAGER.currentCompute = prevCompute;
       MANAGER.runningEffect = null;
     }
+
+    return result;
   }
 
   dispose() {
+    if (this.#cleanupFn) {
+      this.#cleanupFn();
+    }
     return MANAGER.effects.delete(this);
   }
 }

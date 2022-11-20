@@ -165,6 +165,33 @@ describe('Effect', () => {
     expect(effectSpy).toHaveBeenCalledTimes(2);
   });
 
+  test('can dispose with a custom cleanup function', () => {
+    let foo = createSignal(0);
+
+    let didCleanup = false;
+
+    let effectSpy = vi.fn(() => {
+      foo.value;
+      return () => {
+        didCleanup = true;
+      };
+    });
+
+    const dispose = createEffect(effectSpy);
+
+    foo.value++;
+
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+    expect(didCleanup).to.be.false;
+
+    expect(dispose()).to.be.true;
+
+    foo.value++;
+
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+    expect(didCleanup).to.be.true;
+  });
+
   test('prevents you from mutating dependencies inside of an effect in order to prevent cycles', () => {
     let foo = createSignal(0);
 

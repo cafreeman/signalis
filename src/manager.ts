@@ -1,4 +1,3 @@
-import { Derived } from './derived';
 import { Effect } from './effect';
 import { Tag } from './tag';
 
