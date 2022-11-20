@@ -23,7 +23,7 @@ describe('Tracked Set', () => {
 
   test('works with all kinds of values', () => {
     const set = new TrackedSet<
-      string | Record<PropertyKey, unknown> | (() => any) | number | boolean | null
+      string | Record<PropertyKey, unknown> | (() => unknown) | number | boolean | null
     >([
       'foo',
       {},
@@ -242,6 +242,7 @@ describe('Tracked Set', () => {
       let count = 0;
 
       createEffect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         set.forEach(() => {});
         count++;
       });

@@ -42,7 +42,7 @@ export function getMax(tags: Array<Tag>): number {
   // passes on the set of tags. Doing multiple `Math.max()` checks should be cheaper, especially in
   // terms of allocation, than doing the extra Array allocations.
   let max = -1;
-  for (let tag of tags) {
+  for (const tag of tags) {
     max = Math.max(max, tag[REVISION]);
   }
   return max;

@@ -5,9 +5,9 @@ import isEqual from 'lodash/isEqual';
 
 describe('Signal', () => {
   test('it works', () => {
-    let foo = createSignal('foo');
+    const foo = createSignal('foo');
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       foo.value;
     });
 
@@ -19,9 +19,9 @@ describe('Signal', () => {
   });
 
   test('it can be made volative by passing false as second argument', () => {
-    let foo = createSignal('foo', false);
+    const foo = createSignal('foo', false);
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       foo.value;
     });
 
@@ -33,9 +33,9 @@ describe('Signal', () => {
   });
 
   test('it can accept a custom equality function', () => {
-    let foo = createSignal({ a: 1 }, isEqual);
+    const foo = createSignal({ a: 1 }, isEqual);
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       foo.value;
     });
 
@@ -47,9 +47,9 @@ describe('Signal', () => {
   });
 
   test('peek does not trigger updates', () => {
-    let foo = createSignal('foo');
+    const foo = createSignal('foo');
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       foo[Peek]();
     });
 

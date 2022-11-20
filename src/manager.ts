@@ -21,6 +21,7 @@ class Manager {
     return this.#version;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   onTagDirtied = () => {};
 
   batchStart(): void {

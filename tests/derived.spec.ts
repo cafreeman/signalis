@@ -3,9 +3,9 @@ import { createDerived, createSignal } from '../src';
 
 describe('Derived', () => {
   test('it reacts to signal changes', () => {
-    let foo = createSignal(0);
+    const foo = createSignal(0);
 
-    let isEven = createDerived(() => {
+    const isEven = createDerived(() => {
       return foo.value % 2 === 0;
     });
 
@@ -17,13 +17,13 @@ describe('Derived', () => {
   });
 
   test('it computes on initial creation, and recomputes when dependencies change', () => {
-    let foo = createSignal(0);
+    const foo = createSignal(0);
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       return foo.value;
     });
 
-    let isEven = createDerived(spy);
+    const isEven = createDerived(spy);
 
     expect(spy).toHaveBeenCalledOnce();
 
@@ -34,14 +34,14 @@ describe('Derived', () => {
   });
 
   test('it only updates relevant derivations', () => {
-    let foo = createSignal(0);
-    let bar = createSignal(0);
+    const foo = createSignal(0);
+    const bar = createSignal(0);
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       return foo.value % 2 === 0;
     });
 
-    let isEven = createDerived(spy);
+    const isEven = createDerived(spy);
 
     bar.value += 1;
     isEven.value;
@@ -55,19 +55,19 @@ describe('Derived', () => {
   });
 
   test('one dependency can depend on another', () => {
-    let foo = createSignal('foo');
+    const foo = createSignal('foo');
 
-    let uppercaseSpy = vi.fn(() => {
+    const uppercaseSpy = vi.fn(() => {
       return foo.value.toUpperCase();
     });
 
-    let toUpperCase = createDerived(uppercaseSpy);
+    const toUpperCase = createDerived(uppercaseSpy);
 
-    let lowercaseSpy = vi.fn(() => {
+    const lowercaseSpy = vi.fn(() => {
       return toUpperCase.value.toLowerCase();
     });
 
-    let toLowerCase = createDerived(lowercaseSpy);
+    const toLowerCase = createDerived(lowercaseSpy);
 
     foo.value = 'bar';
 
@@ -87,13 +87,13 @@ describe('Derived', () => {
   });
 
   test('it can depend on arrays', () => {
-    let someArray = createSignal<Array<number>>([]);
+    const someArray = createSignal<Array<number>>([]);
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       return someArray.value.length;
     });
 
-    let arrayLength = createDerived(spy);
+    const arrayLength = createDerived(spy);
 
     expect(spy).toHaveBeenCalledOnce();
 
@@ -109,13 +109,13 @@ describe('Derived', () => {
   });
 
   test('it can depend on objects', () => {
-    let someObject = createSignal<Record<string, number>>({});
+    const someObject = createSignal<Record<string, number>>({});
 
-    let spy = vi.fn(() => {
+    const spy = vi.fn(() => {
       return Object.keys(someObject.value).length;
     });
 
-    let arrayLength = createDerived(spy);
+    const arrayLength = createDerived(spy);
 
     expect(spy).toHaveBeenCalledOnce();
     someObject.value.a = 1;

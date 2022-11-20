@@ -33,6 +33,13 @@ export class Signal<T> {
     return this.#value;
   }
 
+  set value(v: T) {
+    if (!this.#isEqual(this.#value, v)) {
+      this.#value = v;
+      markUpdate(this.#tag);
+    }
+  }
+
   // Expressly *not* part of the public API: peeking a value in contexts other than internal parts
   // of the reactivity system itself tends very strongly to produce bugs, because it decouples
   // consumers from the root state. (It is very, very tempting to wire your own caching on with a
@@ -41,18 +48,14 @@ export class Signal<T> {
   [Peek](): T {
     return this.#value;
   }
-
-  set value(v: T) {
-    if (!this.#isEqual(this.#value, v)) {
-      this.#value = v;
-      markUpdate(this.#tag);
-    }
-  }
 }
 
 export function createSignal(value?: null | undefined): Signal<null>;
-export function createSignal<T extends {}>(value: T, isEqual?: Equality<T> | false): Signal<T>;
-export function createSignal<T extends {}>(
+export function createSignal<T extends NonNullable<unknown>>(
+  value: T,
+  isEqual?: Equality<T> | false
+): Signal<T>;
+export function createSignal<T extends NonNullable<unknown>>(
   value?: T | null | undefined,
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<null> {
