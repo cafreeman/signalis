@@ -1,29 +1,44 @@
-import { getMax, Tag } from './tag';
+import { type Derived } from './derived';
 import { MANAGER } from './manager';
+import { type Signal } from './signal';
+import { getMax, Tag } from './tag';
 
 export class Effect {
   #computeFn: () => void;
   #version: number;
   #prevTags: Array<Tag>;
+  #deps?: Array<Signal | Derived>;
 
-  constructor(fn: () => void) {
+  constructor(fn: () => void, deps?: Array<Signal | Derived>) {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
+    this.#deps = deps;
     MANAGER.effects.add(this);
     this.compute();
   }
 
-  compute() {
-    if (this.#prevTags && getMax(this.#prevTags) === this.#version) {
-      return;
+  get hasDeps() {
+    return this.#deps && this.#deps.length > 0;
+  }
+
+  #computeDeps() {
+    if (this.#deps) {
+      this.#deps.forEach((dep) => dep.value);
     }
+  }
 
-    MANAGER.isEffectRunning = true;
-
+  compute() {
     let prevCompute = MANAGER.currentCompute;
     MANAGER.currentCompute = new Set();
+    MANAGER.runningEffect = this;
 
-    MANAGER.computeContext = this;
+    this.#computeDeps();
+
+    if (this.#prevTags && getMax(this.#prevTags) === this.#version) {
+      MANAGER.runningEffect = null;
+      MANAGER.currentCompute = prevCompute;
+      return;
+    }
 
     try {
       this.#computeFn();
@@ -32,7 +47,7 @@ export class Effect {
       this.#version = getMax(this.#prevTags);
 
       MANAGER.currentCompute = prevCompute;
-      MANAGER.isEffectRunning = false;
+      MANAGER.runningEffect = null;
     }
   }
 
@@ -41,7 +56,7 @@ export class Effect {
   }
 }
 
-export function createEffect(fn: () => void): () => boolean {
-  const effect = new Effect(fn);
+export function createEffect(fn: () => void, deps?: Array<Signal | Derived>): () => boolean {
+  const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
 }

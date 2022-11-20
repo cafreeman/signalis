@@ -28,9 +28,11 @@ export class Derived<T = unknown> extends Signal {
       // dependencies are added to the current compute context so that downstream dependents
       // can tell when to recompute
       if (MANAGER.currentCompute && this.#prevTags.length > 0) {
-        this.#prevTags.forEach((tag) => {
-          MANAGER.currentCompute?.add(tag);
-        });
+        if (!MANAGER.runningEffect?.hasDeps) {
+          this.#prevTags.forEach((tag) => {
+            MANAGER.currentCompute?.add(tag);
+          });
+        }
       }
       return this.#prevResult;
     }
@@ -63,8 +65,12 @@ export class Derived<T = unknown> extends Signal {
       // we're in the middle of an effect computation, we add that derived value's dependencies as
       // direct dependencies on the effect. That way the effect will know to recompute even if
       // the derived value itself hasn't been re-run and marked as updated
-      if (MANAGER.isEffectRunning && prevCompute) {
-        prevCompute = new Set([...prevCompute, ...MANAGER.currentCompute]);
+      if (MANAGER.runningEffect && prevCompute) {
+        // If the effect has specified its own dependencies, then we want to skip this so we don't
+        // add extra dependencies to the effect
+        if (!MANAGER.runningEffect.hasDeps) {
+          prevCompute = new Set([...prevCompute, ...MANAGER.currentCompute]);
+        }
       }
 
       if (shouldMarkUpdate) {

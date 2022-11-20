@@ -7,9 +7,12 @@ class Manager {
   batchCount = 0;
   batchIteration = 0;
   currentCompute: Set<Tag> | null = null;
-  computeContext: Derived | Effect | null = null;
+  runningEffect: Effect | null = null;
   effects = new Set<Effect>();
-  isEffectRunning = false;
+
+  get isEffectRunning() {
+    return !!this.runningEffect;
+  }
 
   incrementVersion() {
     return ++this.#version;

@@ -1,7 +1,6 @@
-import { describe, expect, it, test, vi } from 'vitest';
-import { createEffect } from '../src/effect';
+import { describe, expect, test, vi } from 'vitest';
 import { createDerived, createSignal } from '../src';
-import { createClassifier } from 'typescript';
+import { createEffect } from '../src/effect';
 
 describe('Effect', () => {
   test('it works', () => {
@@ -52,9 +51,7 @@ describe('Effect', () => {
     expect(effectSpy).toHaveBeenCalledTimes(3);
   });
 
-  // This feature is not implemented and frankly may not even be possible given the other constraints
-  // around how effects work. Leaving this test here just in case I figure this out at some point.
-  test.skip('it only recomputes when its direct dependencies have actually changed', () => {
+  test('it only recomputes when its direct dependencies have actually changed', () => {
     let foo = createSignal(0);
 
     let isOdd = createDerived(() => {
@@ -65,17 +62,17 @@ describe('Effect', () => {
       isOdd.value;
     });
 
-    createEffect(effectSpy);
+    createEffect(effectSpy, [isOdd]);
 
-    expect(effectSpy).not.toHaveBeenCalled();
+    expect(effectSpy).toHaveBeenCalledOnce();
 
     foo.value = 1;
 
-    expect(effectSpy).toHaveBeenCalledOnce();
+    expect(effectSpy).toHaveBeenCalledTimes(2);
 
     foo.value = 3;
 
-    expect(effectSpy).toHaveBeenCalledOnce();
+    expect(effectSpy).toHaveBeenCalledTimes(2);
   });
 
   test('it works with multiple derived values', () => {
@@ -148,7 +145,7 @@ describe('Effect', () => {
     expect(effectValue).toEqual('BAZ');
   });
 
-  it('can dispose', () => {
+  test('can dispose', () => {
     let foo = createSignal(0);
 
     let effectSpy = vi.fn(() => {
@@ -168,7 +165,7 @@ describe('Effect', () => {
     expect(effectSpy).toHaveBeenCalledTimes(2);
   });
 
-  it('prevents you from mutating dependencies inside of an effect in order to prevent cycles', () => {
+  test('prevents you from mutating dependencies inside of an effect in order to prevent cycles', () => {
     let foo = createSignal(0);
 
     const effectWrapper = () => {
