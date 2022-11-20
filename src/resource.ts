@@ -6,7 +6,7 @@ import type { ReactiveValue } from './types';
 type Fetcher<ValueType> = (source: true) => Promise<ValueType>;
 type FetcherWithSource<SourceType, ValueType> = (source: SourceType) => Promise<ValueType>;
 
-class Resource<ValueType> {
+export class Resource<ValueType> {
   private fetcher: Fetcher<ValueType>;
   private tag: Tag;
   loading = createSignal(false);
@@ -44,7 +44,7 @@ class Resource<ValueType> {
   }
 }
 
-class ResourceWithSignal<ValueType, SourceType> {
+export class ResourceWithSignal<ValueType, SourceType> {
   private fetcher: FetcherWithSource<SourceType, ValueType>;
   private source: ReactiveValue<SourceType>;
   private tag: Tag;
