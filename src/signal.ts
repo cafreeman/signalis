@@ -28,8 +28,8 @@ export const Peek = Symbol('Peek');
     this.tag = createTag();
   }
 
-  get value() {
     markDependency(this.tag);
+  get value(): T {
     return this.#value;
   }
 

@@ -12,13 +12,13 @@ export function createTag(): Tag {
   };
 }
 
-export function markDependency(t: Tag) {
+export function markDependency(t: Tag): void {
   if (MANAGER.currentCompute) {
     MANAGER.currentCompute.add(t);
   }
 }
 
-export function markUpdate(t: Tag) {
+export function markUpdate(t: Tag): void {
   if (MANAGER.currentCompute?.has(t)) {
     throw new Error('Cannot update a tag that has been used during a computation.');
   }
@@ -37,8 +37,8 @@ export function markUpdate(t: Tag) {
   MANAGER.onTagDirtied();
 }
 
-export function getMax(tags: Array<Tag>) {
   return Math.max(...tags.map((t) => t[REVISION]));
+export function getMax(tags: Array<Tag>): number {
 }
 
 export function setOnTagDirtied(fn: () => void) {

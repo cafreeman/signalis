@@ -18,7 +18,7 @@ export class Derived<T = unknown> extends Signal {
     this.value;
   }
 
-  get value() {
+  get value(): T {
     // No matter what, we call `markDependency` immediately so that this derived value gets
     // identified as a dependency of whoever accessed it no matter what
     markDependency(this.tag);

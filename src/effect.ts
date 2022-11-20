@@ -24,17 +24,17 @@ export class Effect {
     }
   }
 
-  get hasDeps() {
-    return this.#deps && this.#deps.length > 0;
+  get hasDeps(): boolean {
+    return this.#deps ? this.#deps.length > 0 : false;
   }
 
-  #computeDeps() {
+  #computeDeps(): void {
     if (this.#deps) {
       this.#deps.forEach((dep) => dep.value);
     }
   }
 
-  compute() {
+  compute(): void {
     let prevCompute = MANAGER.currentCompute;
     MANAGER.currentCompute = new Set();
     MANAGER.runningEffect = this;
@@ -62,7 +62,7 @@ export class Effect {
     return result;
   }
 
-  dispose() {
+  dispose(): boolean {
     if (this.#cleanupFn) {
       this.#cleanupFn();
     }
