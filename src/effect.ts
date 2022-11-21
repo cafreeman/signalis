@@ -34,15 +34,19 @@ export class Effect {
   }
 
   compute(): (() => void) | void {
-    const prevCompute = MANAGER.currentCompute;
-    MANAGER.currentCompute = new Set();
+    const prevCompute = MANAGER.currentContext;
+
+    const context = MANAGER.fetchContext(this);
+    context.clear();
+    MANAGER.currentContext = context;
+
     MANAGER.runningEffect = this;
 
     this.#computeDeps();
 
     if (this.#prevTags && getMax(this.#prevTags) === this.#version) {
       MANAGER.runningEffect = null;
-      MANAGER.currentCompute = prevCompute;
+      MANAGER.currentContext = prevCompute;
       return;
     }
 
@@ -51,10 +55,10 @@ export class Effect {
     try {
       result = this.#computeFn();
     } finally {
-      this.#prevTags = Array.from(MANAGER.currentCompute);
+      this.#prevTags = Array.from(MANAGER.currentContext);
       this.#version = getMax(this.#prevTags);
 
-      MANAGER.currentCompute = prevCompute;
+      MANAGER.currentContext = prevCompute;
       MANAGER.runningEffect = null;
     }
 
@@ -69,8 +73,7 @@ export class Effect {
   }
 }
 
-// TODO: use something better than any here
-export function createEffect(fn: () => void, deps?: Array<ReactiveValue<any>>): () => boolean {
+export function createEffect(fn: () => void, deps?: Array<ReactiveValue<unknown>>): () => boolean {
   const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
 }

@@ -1,13 +1,17 @@
+import type { Derived } from './derived';
 import type { Effect } from './effect';
 import type { Tag } from './tag';
 
 class Manager {
   #version = 0;
+
   batchCount = 0;
-  batchIteration = 0;
-  currentCompute: Set<Tag> | null = null;
-  runningEffect: Effect | null = null;
+
+  contexts = new WeakMap<Derived<unknown> | Effect, Set<Tag>>();
+  currentContext: Set<Tag> | null = null;
+
   effects = new Set<Effect>();
+  runningEffect: Effect | null = null;
 
   get isEffectRunning(): boolean {
     return !!this.runningEffect;
@@ -36,6 +40,17 @@ class Manager {
     this.effects.forEach((effect) => {
       effect.compute();
     });
+  }
+
+  fetchContext(k: Derived<unknown> | Effect): Set<Tag> {
+    let context = this.contexts.get(k);
+
+    if (!context) {
+      context = new Set<Tag>();
+      this.contexts.set(k, context);
+    }
+
+    return context;
   }
 }
 

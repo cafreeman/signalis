@@ -13,13 +13,13 @@ export function createTag(): Tag {
 }
 
 export function markDependency(t: Tag): void {
-  if (MANAGER.currentCompute) {
-    MANAGER.currentCompute.add(t);
+  if (MANAGER.currentContext) {
+    MANAGER.currentContext.add(t);
   }
 }
 
 export function markUpdate(t: Tag): void {
-  if (MANAGER.currentCompute?.has(t)) {
+  if (MANAGER.currentContext?.has(t)) {
     throw new Error('Cannot update a tag that has been used during a computation.');
   }
 
