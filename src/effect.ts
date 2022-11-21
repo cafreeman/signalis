@@ -1,7 +1,6 @@
-import type { Derived } from './derived';
 import { MANAGER } from './manager';
-import type { Signal } from './signal';
 import { getMax, Tag } from './tag';
+import type { ReactiveValue } from './types';
 
 type ComputeFn = () => void | (() => void);
 
@@ -9,10 +8,10 @@ export class Effect {
   #computeFn: ComputeFn;
   #version: number;
   #prevTags?: Array<Tag>;
-  #deps?: Array<Signal<unknown> | Derived<unknown>> | undefined;
+  #deps?: Array<ReactiveValue<unknown>> | undefined;
   #cleanupFn?: () => void;
 
-  constructor(fn: ComputeFn, deps?: Array<Signal<unknown> | Derived<unknown>>) {
+  constructor(fn: ComputeFn, deps?: Array<ReactiveValue<unknown>>) {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
     this.#deps = deps;
@@ -70,10 +69,8 @@ export class Effect {
   }
 }
 
-export function createEffect(
-  fn: () => void,
-  deps?: Array<Signal<unknown> | Derived<unknown>>
-): () => boolean {
+// TODO: use something better than any here
+export function createEffect(fn: () => void, deps?: Array<ReactiveValue<any>>): () => boolean {
   const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
 }
