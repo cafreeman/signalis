@@ -22,7 +22,7 @@ describe('Resource', () => {
 
       expect(message).toEqual(undefined);
 
-      expect(resource.loading).toBe(true);
+      expect(resource.loading.value).toBe(true);
 
       deferred.resolve('foo');
 
@@ -33,7 +33,7 @@ describe('Resource', () => {
       expect(effectSpy).toHaveBeenCalledTimes(2);
       expect(message).toEqual('foo');
 
-      expect(resource.loading).toBe(false);
+      expect(resource.loading.value).toBe(false);
     });
 
     test('with error', async () => {
@@ -42,13 +42,13 @@ describe('Resource', () => {
 
       const resource = createResource(resourceSpy);
 
-      expect(resource.loading).toBe(true);
+      expect(resource.loading.value).toBe(true);
 
       d.reject('error');
 
       await expect(d.promise).rejects.toThrow('error');
-      expect(resource.error).toEqual('error');
-      expect(resource.loading).toBe(false);
+      expect(resource.error.value).toEqual('error');
+      expect(resource.loading.value).toBe(false);
     });
   });
 
@@ -74,7 +74,7 @@ describe('Resource', () => {
 
       expect(message).toEqual(undefined);
 
-      expect(resource.loading).toBe(true);
+      expect(resource.loading.value).toBe(true);
       deferred.resolve(0);
 
       await expect(deferred.promise).resolves.toEqual(0);
@@ -91,7 +91,7 @@ describe('Resource', () => {
     });
 
     test('it does not run when source is null, false, or undefined', async () => {
-      const source = createSignal(null);
+      const source = createSignal<null | number | false>(null);
       const deferred = defer<number>();
 
       const resourceSpy = vi.fn(() => {
@@ -101,13 +101,13 @@ describe('Resource', () => {
       const resource = createResource(source, resourceSpy);
       // At this point, nothing should happen because the source is null
       expect(resourceSpy).not.toHaveBeenCalled();
-      expect(resource.loading).toBe(false);
+      expect(resource.loading.value).toBe(false);
 
       source.value = 1;
 
       // Now that we've set the value to something eligible for a run, everything should suddenly
       // start running
-      expect(resource.loading).toBe(true);
+      expect(resource.loading.value).toBe(true);
       expect(resourceSpy).toHaveBeenCalledOnce();
       expect(resourceSpy).toHaveBeenLastCalledWith(1);
       deferred.resolve(0);
@@ -117,9 +117,40 @@ describe('Resource', () => {
 
       // updating the source to another ineligible value should not change anything, all the
       // prior assertions should still pass
-      expect(resource.loading).toBe(false);
+      expect(resource.loading.value).toBe(false);
       expect(resourceSpy).toHaveBeenCalledOnce();
       expect(resourceSpy).toHaveBeenLastCalledWith(1);
+    });
+
+    test('error and loading are reactive values', async () => {
+      const d = defer();
+      const resourceSpy = vi.fn(() => d.promise);
+
+      const source = createSignal(false);
+
+      const resource = createResource(source, resourceSpy);
+
+      let message = '';
+
+      createEffect(() => {
+        if (resource.loading.value) {
+          message = 'loading';
+        } else if (resource.error.value) {
+          message = 'error';
+        }
+      });
+
+      expect(message).toEqual('');
+
+      source.value = true;
+
+      expect(message).toEqual('loading');
+
+      d.reject('oops');
+
+      await expect(d.promise).rejects.toThrowError('oops');
+
+      expect(message).toEqual('error');
     });
   });
 });
