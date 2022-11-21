@@ -50,14 +50,15 @@ export class Signal<T> {
   }
 }
 
-export function createSignal(value?: null | undefined): Signal<null>;
+export function createSignal(value?: null | undefined): Signal<unknown>;
 export function createSignal<T extends {}>(value: T, isEqual?: Equality<T> | false): Signal<T>;
 export function createSignal<T extends {}>(
   value?: T | null | undefined,
   isEqual?: Equality<T> | false
-): Signal<T> | Signal<null> {
+): Signal<T> | Signal<unknown> {
   if (value == null) {
-    return new Signal(null);
+    // SAFETY: this is legal, because we are *widening* the type to a safe "top" type.
+    return new Signal(null as unknown);
   }
 
   return new Signal(value, isEqual);
