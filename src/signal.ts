@@ -50,16 +50,18 @@ export class Signal<T> {
   }
 }
 
-export function createSignal(value?: null | undefined): Signal<unknown>;
-export function createSignal<T extends {}>(value: T, isEqual?: Equality<T> | false): Signal<T>;
+export function createSignal(): Signal<unknown>;
+export function createSignal<T>(value: T, isEqual?: Equality<T> | false): Signal<T>;
 export function createSignal<T extends {}>(
-  value?: T | null | undefined,
+  value?: T,
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<unknown> {
-  if (value == null) {
-    // SAFETY: this is legal, because we are *widening* the type to a safe "top" type.
-    return new Signal(null as unknown);
+  if (arguments.length === 0) {
+    return new Signal(null as unknown, false);
+  } else {
+    // SAFETY: TS doesn't understand that the `arguments` check means there is
+    // always *something* passed as `value` here, and therefore that it is safe
+    // to treat `value` as indicating what `T` must be.
+    return new Signal(value as T, isEqual);
   }
-
-  return new Signal(value, isEqual);
 }
