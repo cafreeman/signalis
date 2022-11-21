@@ -45,7 +45,10 @@ type State<T> = Initial | Loading | Loaded<T> | Failed;
 export class Resource<ValueType> {
   private fetcher: Fetcher<ValueType>;
   private tag = createTag();
-  private state = createSignal<State<ValueType>>(Initial());
+  private state = createSignal<State<ValueType>>(
+    Initial(),
+    ([oldState], [newState]) => oldState !== newState
+  );
 
   get loading(): boolean {
     return this.state.value[0] === LOADING_TAG;
@@ -92,7 +95,10 @@ export class Resource<ValueType> {
 export class ResourceWithSignal<ValueType, SourceType> {
   private fetcher: FetcherWithSource<SourceType, ValueType>;
   private tag = createTag();
-  private state = createSignal<State<ValueType>>(Initial());
+  private state = createSignal<State<ValueType>>(
+    Initial(),
+    ([oldState], [newState]) => oldState !== newState
+  );
 
   get loading(): boolean {
     return this.state.value[0] === LOADING_TAG;
