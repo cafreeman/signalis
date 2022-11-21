@@ -8,14 +8,10 @@ export class Effect {
   #computeFn: ComputeFn;
   #version: number;
   #prevTags?: Array<Tag>;
-  // I would like to *not* use `any` here, but it could *actually* be anything so i'm not sure
-  // if there's a better option
-  // TODO: use something better than any here
-  #deps?: Array<ReactiveValue<any>> | undefined;
+  #deps?: Array<ReactiveValue<unknown>> | undefined;
   #cleanupFn?: () => void;
 
-  // TODO: use something better than any here
-  constructor(fn: ComputeFn, deps?: Array<ReactiveValue<any>>) {
+  constructor(fn: ComputeFn, deps?: Array<ReactiveValue<unknown>>) {
     this.#computeFn = fn;
     this.#version = MANAGER.version;
     this.#deps = deps;

@@ -1,7 +1,7 @@
 import defer from 'p-defer';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, expectTypeOf, test, vi } from 'vitest';
 import { createEffect, createSignal } from '../src';
-import { createResource } from '../src/resource';
+import { createResource, type Resource } from '../src/resource';
 
 describe('Resource', () => {
   describe('without source', () => {
@@ -9,7 +9,8 @@ describe('Resource', () => {
       const deferred = defer<string>();
       const resourceSpy = vi.fn(() => deferred.promise);
 
-      const resource = createResource<string>(resourceSpy);
+      const resource = createResource(resourceSpy);
+      expectTypeOf(resource).toEqualTypeOf<Resource<string>>();
 
       let message: string | undefined = '';
 
@@ -21,7 +22,7 @@ describe('Resource', () => {
 
       expect(message).toEqual(undefined);
 
-      expect(resource.loading.value).toBe(true);
+      expect(resource.loading).toBe(true);
 
       deferred.resolve('foo');
 
@@ -32,7 +33,7 @@ describe('Resource', () => {
       expect(effectSpy).toHaveBeenCalledTimes(2);
       expect(message).toEqual('foo');
 
-      expect(resource.loading.value).toBe(false);
+      expect(resource.loading).toBe(false);
     });
 
     test('with error', async () => {
@@ -41,13 +42,13 @@ describe('Resource', () => {
 
       const resource = createResource(resourceSpy);
 
-      expect(resource.loading.value).toBe(true);
+      expect(resource.loading).toBe(true);
 
       d.reject('error');
 
       await expect(d.promise).rejects.toThrow('error');
-      expect(resource.error?.value).toEqual('error');
-      expect(resource.loading.value).toBe(false);
+      expect(resource.error).toEqual('error');
+      expect(resource.loading).toBe(false);
     });
   });
 
@@ -73,7 +74,7 @@ describe('Resource', () => {
 
       expect(message).toEqual(undefined);
 
-      expect(resource.loading.value).toBe(true);
+      expect(resource.loading).toBe(true);
       deferred.resolve(0);
 
       await expect(deferred.promise).resolves.toEqual(0);
@@ -90,7 +91,7 @@ describe('Resource', () => {
     });
 
     test('it does not run when source is null, false, or undefined', async () => {
-      const source = createSignal<any>(null);
+      const source = createSignal(null);
       const deferred = defer<number>();
 
       const resourceSpy = vi.fn(() => {
@@ -100,13 +101,13 @@ describe('Resource', () => {
       const resource = createResource(source, resourceSpy);
       // At this point, nothing should happen because the source is null
       expect(resourceSpy).not.toHaveBeenCalled();
-      expect(resource.loading.value).toBe(false);
+      expect(resource.loading).toBe(false);
 
       source.value = 1;
 
       // Now that we've set the value to something eligible for a run, everything should suddenly
       // start running
-      expect(resource.loading.value).toBe(true);
+      expect(resource.loading).toBe(true);
       expect(resourceSpy).toHaveBeenCalledOnce();
       expect(resourceSpy).toHaveBeenLastCalledWith(1);
       deferred.resolve(0);
@@ -116,7 +117,7 @@ describe('Resource', () => {
 
       // updating the source to another ineligible value should not change anything, all the
       // prior assertions should still pass
-      expect(resource.loading.value).toBe(false);
+      expect(resource.loading).toBe(false);
       expect(resourceSpy).toHaveBeenCalledOnce();
       expect(resourceSpy).toHaveBeenLastCalledWith(1);
     });
