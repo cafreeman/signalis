@@ -46,7 +46,7 @@ export class Effect {
 
     if (this.#prevTags && getMax(this.#prevTags) === this.#version) {
       MANAGER.runningEffect = null;
-      MANAGER.currentContext = prevCompute;
+      MANAGER.currentContext = prevContext;
       return;
     }
 
@@ -58,7 +58,7 @@ export class Effect {
       this.#prevTags = Array.from(MANAGER.currentContext);
       this.#version = getMax(this.#prevTags);
 
-      MANAGER.currentContext = prevCompute;
+      MANAGER.currentContext = prevContext;
       MANAGER.runningEffect = null;
     }
 
