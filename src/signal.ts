@@ -1,4 +1,4 @@
-import { createTag, markDependency, markUpdate, REVISION, Tagged } from './tag';
+import { createTag, markDependency, markUpdate, REVISION, type Tagged } from './tag';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
