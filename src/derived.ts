@@ -1,4 +1,4 @@
-import { markDependency, markUpdate, getMax, Tag, createTag } from './tag';
+import { markDependency, markUpdate, getMax, createTag, REVISION, Tagged } from './tag';
 import {
   addTagToCurrentContext,
   setupCurrentContext,
@@ -9,18 +9,16 @@ import {
   setCurrentContext,
 } from './state';
 
-class Derived<T> {
+class Derived<T> implements Tagged {
   private computeFn: () => T;
-  private version: number;
+  private version = getVersion();
   private prevResult?: T;
-  private prevTags?: Array<Tag>;
+  private prevTags?: Array<Tagged>;
 
-  private tag: Tag;
+  [REVISION] = createTag();
 
   constructor(compute: () => T) {
     this.computeFn = compute;
-    this.version = getVersion();
-    this.tag = createTag();
 
     // Access the value immediately so we can cache the result and get reference to all the
     // dependent values
@@ -30,7 +28,7 @@ class Derived<T> {
   get value(): T {
     // No matter what, we call `markDependency` immediately so that this derived value gets
     // identified as a dependency of whoever accessed it no matter what
-    markDependency(this.tag);
+    markDependency(this);
 
     const prevContext = getCurrentContext();
 
@@ -95,7 +93,7 @@ class Derived<T> {
       }
 
       if (shouldMarkUpdate) {
-        markUpdate(this.tag);
+        markUpdate(this);
       }
 
       setCurrentContext(prevContext);

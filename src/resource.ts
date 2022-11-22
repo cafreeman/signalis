@@ -1,14 +1,14 @@
 import { createEffect } from './effect';
 import { createSignal, Signal } from './signal';
-import { createTag, markDependency, markUpdate } from './tag';
+import { createTag, markDependency, markUpdate, REVISION, Tagged } from './tag';
 import type { ReactiveValue } from './types';
 
 type Fetcher<ValueType> = (source: true) => Promise<ValueType>;
 type FetcherWithSource<SourceType, ValueType> = (source: SourceType) => Promise<ValueType>;
 
-export class Resource<ValueType> {
+export class Resource<ValueType> implements Tagged {
   private fetcher: Fetcher<ValueType>;
-  private tag = createTag();
+  [REVISION] = createTag();
   loading = createSignal(false);
   error: Signal<unknown> = createSignal();
 
@@ -30,7 +30,7 @@ export class Resource<ValueType> {
       // end up just throwing away data.
       this.last = this.current;
       this.current = await this.fetcher(true);
-      markUpdate(this.tag);
+      markUpdate(this);
     } catch (err: unknown) {
       this.error.value = err;
     } finally {
@@ -39,14 +39,14 @@ export class Resource<ValueType> {
   }
 
   get value() {
-    markDependency(this.tag);
+    markDependency(this);
     return this.current;
   }
 }
 
-export class ResourceWithSignal<ValueType, SourceType> {
+export class ResourceWithSignal<ValueType, SourceType> implements Tagged {
   private fetcher: FetcherWithSource<SourceType, ValueType>;
-  private tag = createTag();
+  [REVISION] = createTag();
   loading = createSignal(false);
   error: Signal<unknown> = createSignal();
 
@@ -76,7 +76,7 @@ export class ResourceWithSignal<ValueType, SourceType> {
       // end up just throwing away data.
       this.last = this.current;
       this.current = await this.fetcher(source);
-      markUpdate(this.tag);
+      markUpdate(this);
     } catch (err) {
       this.error.value = err;
     } finally {
@@ -85,7 +85,7 @@ export class ResourceWithSignal<ValueType, SourceType> {
   }
 
   get value() {
-    markDependency(this.tag);
+    markDependency(this);
     return this.current;
   }
 }

@@ -7,7 +7,7 @@ import {
   setCurrentContext,
   removeEffect,
 } from './state';
-import { getMax, Tag } from './tag';
+import { getMax, Tagged } from './tag';
 import type { ReactiveValue } from './types';
 
 type ComputeFn = () => void | (() => void);
@@ -15,7 +15,7 @@ type ComputeFn = () => void | (() => void);
 class Effect {
   private _computeFn: ComputeFn;
   private _version: number;
-  private _prevTags?: Array<Tag>;
+  private _prevTags?: Array<Tagged>;
   private _deps?: Array<ReactiveValue<unknown>> | undefined;
   private _cleanupFn?: () => void;
 

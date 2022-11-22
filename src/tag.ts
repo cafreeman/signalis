@@ -9,23 +9,32 @@ import {
   runEffects,
 } from './state';
 
-const REVISION = Symbol('Revision');
-
-export type Tag = {
-  [REVISION]: number;
-};
-
-export function createTag(): Tag {
-  return {
-    [REVISION]: getVersion(),
-  };
+// Type-only, zero-cost way of making type-safe "new types".
+declare const DataTag: unique symbol;
+declare class Opaque<T> {
+  private [DataTag]: T;
 }
 
-export function markDependency(t: Tag): void {
+// Applied to numbers for the sake of making this module the only way to get a
+// thing used as a `Tag`.
+export type Tag = number & Opaque<'tag'>;
+
+export const createTag: () => Tag = getVersion;
+
+// Which in turn we use to define our revision system, by having anything which
+// uses a tag supply it directly on the item with this private symbol.
+/** @internal */
+export const REVISION = Symbol('Revision');
+
+export interface Tagged {
+  [REVISION]: Tag;
+}
+
+export function markDependency(t: Tagged): void {
   addTagToCurrentContext(t);
 }
 
-export function markUpdate(t: Tag): void {
+export function markUpdate(t: Tagged): void {
   if (hasCurrentContext(t)) {
     throw new Error('Cannot update a tag that has been used during a computation.');
   }
@@ -44,13 +53,13 @@ export function markUpdate(t: Tag): void {
   onTagDirtied();
 }
 
-export function getMax(tags: Array<Tag>): number {
+export function getMax(taggedItems: Iterable<Tagged>): Tag {
   // We could also do a `.reduce()`; the key is to make sure we avoid ever running *multiple*
   // passes on the set of tags. Doing multiple `Math.max()` checks should be cheaper, especially in
   // terms of allocation, than doing the extra Array allocations.
   let max = -1;
-  for (const tag of tags) {
-    max = Math.max(max, tag[REVISION]);
+  for (const tagged of taggedItems) {
+    max = Math.max(max, tagged[REVISION]);
   }
-  return max;
+  return max as Tag;
 }
