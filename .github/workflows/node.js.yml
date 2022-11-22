@@ -52,3 +52,49 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+  type-check:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        ts-version: [4.9, next]
+
+    continue-on-error: false
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        id: pnpm-install
+        with:
+          version: ^7.0.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        name: Setup pnpm cache
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install TypeScript ${{ matrix.ts-version }}
+        run: pnpm install --dev typescript@${{ matrix.ts-version }}
+
+      - name: Type check
+        run: pnpm tsc --noEmit
