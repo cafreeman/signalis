@@ -1,5 +1,13 @@
 import { markDependency, markUpdate, getMax, Tag, createTag } from './tag';
-import { MANAGER } from './manager';
+import {
+  addTagToCurrentContext,
+  setupCurrentContext,
+  getCurrentContext,
+  getVersion,
+  isEffectRunning,
+  runningEffectHasDeps,
+  setCurrentContext,
+} from './state';
 
 export class Derived<T> {
   private computeFn: () => T;
@@ -11,7 +19,7 @@ export class Derived<T> {
 
   constructor(compute: () => T) {
     this.computeFn = compute;
-    this.version = MANAGER.version;
+    this.version = getVersion();
     this.tag = createTag();
 
     // Access the value immediately so we can cache the result and get reference to all the
@@ -24,14 +32,16 @@ export class Derived<T> {
     // identified as a dependency of whoever accessed it no matter what
     markDependency(this.tag);
 
+    const prevContext = getCurrentContext();
+
     if (this.prevTags && getMax(this.prevTags) === this.version) {
       // Even if this derived value doesn't need to recompute, we want to make sure that its
       // dependencies are added to the current compute context so that downstream dependents
       // can tell when to recompute
-      if (MANAGER.currentContext && this.prevTags.length > 0) {
-        if (!MANAGER.runningEffect?.hasDeps) {
+      if (prevContext && this.prevTags.length > 0) {
+        if (!runningEffectHasDeps()) {
           this.prevTags.forEach((tag) => {
-            MANAGER.currentContext?.add(tag);
+            addTagToCurrentContext(tag);
           });
         }
       }
@@ -42,11 +52,7 @@ export class Derived<T> {
       return this.prevResult as T;
     }
 
-    const prevContext = MANAGER.currentContext;
-
-    const context = MANAGER.fetchContext(this);
-    context.clear();
-    MANAGER.currentContext = context;
+    const currentContext = setupCurrentContext(this);
 
     // Since we want to memoize downstream updates, we only mark an update here if the value
     // actually changes, rather than simply whenever this Derived's dependencies update. This way,
@@ -65,7 +71,7 @@ export class Derived<T> {
       }
       this.prevResult = result;
     } finally {
-      this.prevTags = Array.from(MANAGER.currentContext);
+      this.prevTags = Array.from(currentContext);
       this.version = getMax(this.prevTags);
 
       // Since effects are never accessed directly (like signals and derived values), it's impossible
@@ -76,11 +82,11 @@ export class Derived<T> {
       // we're in the middle of an effect computation, we add that derived value's dependencies as
       // direct dependencies on the effect. That way the effect will know to recompute even if
       // the derived value itself hasn't been re-run and marked as updated
-      if (MANAGER.runningEffect && prevContext) {
+      if (isEffectRunning() && prevContext) {
         // If the effect has specified its own dependencies, then we want to skip this so we don't
         // add extra dependencies to the effect
-        if (!MANAGER.runningEffect.hasDeps) {
-          MANAGER.currentContext.forEach((c) => {
+        if (!runningEffectHasDeps()) {
+          currentContext.forEach((c) => {
             // We definitely know prevCompute is defined already but TS does not agree since we're
             // in a callback here, so adding the extra assertion just to be thorough
             prevContext && prevContext.add(c);
@@ -92,7 +98,7 @@ export class Derived<T> {
         markUpdate(this.tag);
       }
 
-      MANAGER.currentContext = prevContext;
+      setCurrentContext(prevContext);
     }
 
     return this.prevResult;

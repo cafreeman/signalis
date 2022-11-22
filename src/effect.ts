@@ -1,4 +1,12 @@
-import { MANAGER } from './manager';
+import {
+  registerEffect,
+  setupCurrentContext,
+  getCurrentContext,
+  getVersion,
+  setRunningEffect,
+  setCurrentContext,
+  removeEffect,
+} from './state';
 import { getMax, Tag } from './tag';
 import type { ReactiveValue } from './types';
 
@@ -13,9 +21,9 @@ export class Effect {
 
   constructor(fn: ComputeFn, deps?: Array<ReactiveValue<unknown>>) {
     this.#computeFn = fn;
-    this.#version = MANAGER.version;
+    this.#version = getVersion();
     this.#deps = deps;
-    MANAGER.effects.add(this);
+    registerEffect(this);
     const maybeCleanupFn = this.compute();
 
     if (typeof maybeCleanupFn === 'function') {
@@ -34,19 +42,17 @@ export class Effect {
   }
 
   compute(): (() => void) | void {
-    const prevContext = MANAGER.currentContext;
+    const prevContext = getCurrentContext();
 
-    const context = MANAGER.fetchContext(this);
-    context.clear();
-    MANAGER.currentContext = context;
+    const currentContext = setupCurrentContext(this);
 
-    MANAGER.runningEffect = this;
+    setRunningEffect(this);
 
     this.#computeDeps();
 
     if (this.#prevTags && getMax(this.#prevTags) === this.#version) {
-      MANAGER.runningEffect = null;
-      MANAGER.currentContext = prevContext;
+      setRunningEffect(null);
+      setCurrentContext(prevContext);
       return;
     }
 
@@ -55,11 +61,11 @@ export class Effect {
     try {
       result = this.#computeFn();
     } finally {
-      this.#prevTags = Array.from(MANAGER.currentContext);
+      this.#prevTags = Array.from(currentContext);
       this.#version = getMax(this.#prevTags);
 
-      MANAGER.currentContext = prevContext;
-      MANAGER.runningEffect = null;
+      setCurrentContext(prevContext);
+      setRunningEffect(null);
     }
 
     return result;
@@ -69,7 +75,7 @@ export class Effect {
     if (this.#cleanupFn) {
       this.#cleanupFn();
     }
-    return MANAGER.effects.delete(this);
+    return removeEffect(this);
   }
 }
 
