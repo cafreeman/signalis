@@ -1,13 +1,13 @@
-import { MANAGER } from './manager';
+import { batchCount, batchEnd, batchStart, runEffects } from './state';
 
 export function batch(cb: () => void) {
-  MANAGER.batchStart();
+  batchStart();
 
   cb();
 
-  MANAGER.batchEnd();
+  batchEnd();
 
-  if (MANAGER.batchCount === 0) {
-    MANAGER.runEffects();
+  if (batchCount() === 0) {
+    runEffects();
   }
 }
