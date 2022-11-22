@@ -34,7 +34,7 @@ export class Effect {
   }
 
   compute(): (() => void) | void {
-    const prevCompute = MANAGER.currentContext;
+    const prevContext = MANAGER.currentContext;
 
     const context = MANAGER.fetchContext(this);
     context.clear();
