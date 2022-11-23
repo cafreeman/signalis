@@ -16,7 +16,7 @@ function neverEqual(): boolean {
  */
 export const Peek = Symbol('Peek');
 
-export class Signal<T> {
+class _Signal<T> {
   private _value: T;
   private _isEqual: Equality<T>;
   private _tag: Tag;
@@ -54,6 +54,15 @@ export class Signal<T> {
   }
 }
 
+// Define the public interface to Signal to expressly exclude `_isEqual`: forbidding other types
+// from (even implicitly) depending on it very much simplifies the types throughout the rest of the
+// system, because it eliminates a variance hazard. Additionally, doing this with `export interface`
+// extending the underlying type makes it impossible for external callers to construct this
+// directly, whether with the actual `new` operator *or* by trying to define an implementation of
+// `Signal` matching the interface (since it has private fields).
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Signal<T> extends Omit<_Signal<T>, '_isEqual'> {}
+
 export function createSignal(): Signal<unknown>;
 export function createSignal<T>(value: T, isEqual?: Equality<T> | false): Signal<T>;
 export function createSignal<T extends {}>(
@@ -61,11 +70,11 @@ export function createSignal<T extends {}>(
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<unknown> {
   if (arguments.length === 0) {
-    return new Signal(null as unknown, false);
+    return new _Signal(null as unknown, false);
   } else {
     // SAFETY: TS doesn't understand that the `arguments` check means there is
     // always *something* passed as `value` here, and therefore that it is safe
     // to treat `value` as indicating what `T` must be.
-    return new Signal(value as T, isEqual);
+    return new _Signal(value as T, isEqual);
   }
 }
