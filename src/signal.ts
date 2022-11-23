@@ -6,37 +6,41 @@ function baseEquality<T>(oldValue: T, newValue: T) {
   return oldValue === newValue;
 }
 
+function neverEqual(): boolean {
+  return false;
+}
+
 /**
   @private This is available for internal "friend" APIs to use, but it is *not*
     legal to use by consumers.
  */
 export const Peek = Symbol('Peek');
 
-export class Signal<T> {
-  #value: T;
-  #isEqual: Equality<T>;
-  #tag: Tag;
+class _Signal<T> {
+  private _value: T;
+  private _isEqual: Equality<T>;
+  private _tag: Tag;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
-    this.#value = value;
+    this._value = value;
 
     if (isEqual === false) {
-      this.#isEqual = () => false;
+      this._isEqual = neverEqual;
     } else {
-      this.#isEqual = isEqual;
+      this._isEqual = isEqual;
     }
-    this.#tag = createTag();
+    this._tag = createTag();
   }
 
   get value(): T {
-    markDependency(this.#tag);
-    return this.#value;
+    markDependency(this._tag);
+    return this._value;
   }
 
   set value(v: T) {
-    if (!this.#isEqual(this.#value, v)) {
-      this.#value = v;
-      markUpdate(this.#tag);
+    if (!this._isEqual(this._value, v)) {
+      this._value = v;
+      markUpdate(this._tag);
     }
   }
 
@@ -46,9 +50,18 @@ export class Signal<T> {
   // "peek", rather than using caching tools composed out of the core primitives, or to "be smarter"
   // than the signal system.)
   [Peek](): T {
-    return this.#value;
+    return this._value;
   }
 }
+
+// Define the public interface to Signal to expressly exclude `_isEqual`: forbidding other types
+// from (even implicitly) depending on it very much simplifies the types throughout the rest of the
+// system, because it eliminates a variance hazard. Additionally, doing this with `export interface`
+// extending the underlying type makes it impossible for external callers to construct this
+// directly, whether with the actual `new` operator *or* by trying to define an implementation of
+// `Signal` matching the interface (since it has private fields).
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Signal<T> extends Omit<_Signal<T>, '_isEqual'> {}
 
 export function createSignal(): Signal<unknown>;
 export function createSignal<T>(value: T, isEqual?: Equality<T> | false): Signal<T>;
@@ -57,11 +70,11 @@ export function createSignal<T extends {}>(
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<unknown> {
   if (arguments.length === 0) {
-    return new Signal(null as unknown, false);
+    return new _Signal(null as unknown, false);
   } else {
     // SAFETY: TS doesn't understand that the `arguments` check means there is
     // always *something* passed as `value` here, and therefore that it is safe
     // to treat `value` as indicating what `T` must be.
-    return new Signal(value as T, isEqual);
+    return new _Signal(value as T, isEqual);
   }
 }
