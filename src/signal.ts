@@ -1,4 +1,4 @@
-import { createTag, markDependency, markUpdate, type Tag } from './tag';
+import { createTag, markDependency, markUpdate, REVISION, type Tagged } from './tag';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
@@ -16,10 +16,11 @@ function neverEqual(): boolean {
  */
 export const Peek = Symbol('Peek');
 
-class _Signal<T> {
+class _Signal<T> implements Tagged {
   private _value: T;
   private _isEqual: Equality<T>;
-  private _tag: Tag;
+
+  [REVISION] = createTag();
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this._value = value;
@@ -29,18 +30,17 @@ class _Signal<T> {
     } else {
       this._isEqual = isEqual;
     }
-    this._tag = createTag();
   }
 
   get value(): T {
-    markDependency(this._tag);
+    markDependency(this);
     return this._value;
   }
 
   set value(v: T) {
     if (!this._isEqual(this._value, v)) {
       this._value = v;
-      markUpdate(this._tag);
+      markUpdate(this);
     }
   }
 

@@ -1,11 +1,11 @@
 import type { Derived } from './derived';
 import type { Effect } from './effect';
-import type { Tag } from './tag';
+import type { Tag, Tagged } from './tag';
 
-export type Context = Set<Tag>;
+export type Context = Set<Tagged>;
 
 interface State {
-  version: number;
+  version: Tag;
   batchCount: number;
   contexts: WeakMap<Derived<unknown> | Effect, Context>;
   currentContext: Context | null;
@@ -14,12 +14,15 @@ interface State {
   onTagDirtied: () => void;
 }
 
+// SAFETY: this state object is responsible for the global `Tag` count, and so
+// consistently casts its `version` as `Tag` internally.
+
 const STATE: State = {
-  version: 0,
+  version: 0 as Tag,
 
   batchCount: 0,
 
-  contexts: new WeakMap<Derived<unknown> | Effect, Set<Tag>>(),
+  contexts: new WeakMap<Derived<unknown> | Effect, Set<Tagged>>(),
   currentContext: null,
 
   effects: new Set<Effect>(),
@@ -30,7 +33,7 @@ const STATE: State = {
 };
 
 // Tags
-export function addTagToCurrentContext(t: Tag) {
+export function addTagToCurrentContext(t: Tagged) {
   if (STATE.currentContext) {
     STATE.currentContext.add(t);
   }
@@ -45,17 +48,17 @@ export function setOnTagDirtied(fn: () => void): void {
 }
 
 // Version
-export function getVersion(): number {
+export function getVersion(): Tag {
   return STATE.version;
 }
 
-export function incrementVersion(): number {
-  return ++STATE.version;
+export function incrementVersion(): Tag {
+  return ++STATE.version as Tag;
 }
 
 // Context
 
-export function hasCurrentContext(t: Tag): boolean {
+export function hasCurrentContext(t: Tagged): boolean {
   return !!STATE.currentContext && STATE.currentContext.has(t);
 }
 
@@ -69,14 +72,16 @@ export function setCurrentContext(context: Context | null) {
 // This function will either fetch the context associated with current reactive value, or create
 // a new one if it doesn't already exist, and prepare it to run by clearing it and setting it
 // as the new current context.
-export function setupCurrentContext(k: Derived<unknown> | Effect): Set<Tag> {
+export function setupCurrentContext(k: Derived<unknown> | Effect): Set<Tagged> {
   let context = STATE.contexts.get(k);
 
   if (!context) {
-    context = new Set<Tag>();
+    context = new Set<Tagged>();
     STATE.contexts.set(k, context);
   }
 
+  // This is doubly important: we need it to not only make sure we don't carry around wrong lists
+  // of dependencies, but also to make sure we avoid leaking the previous dependencies.
   context.clear();
   setCurrentContext(context);
   return context;
