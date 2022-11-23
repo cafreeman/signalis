@@ -35,7 +35,7 @@ class Effect {
     return this._deps ? this._deps.length > 0 : false;
   }
 
-  _computeDeps(): void {
+  private _computeDeps(): void {
     if (this._deps) {
       this._deps.forEach((dep) => dep.value);
     }
