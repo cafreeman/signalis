@@ -94,7 +94,7 @@ jobs:
         run: pnpm install
 
       - name: Install TypeScript ${{ matrix.ts-version }}
-        run: pnpm install --dev typescript@${{ matrix.ts-version }}
+        run: pnpm add --dev typescript@${{ matrix.ts-version }}
 
       - name: Type check
         run: pnpm tsc --noEmit
