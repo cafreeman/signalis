@@ -17,30 +17,30 @@ function neverEqual(): boolean {
 export const Peek = Symbol('Peek');
 
 export class Signal<T> {
-  #value: T;
-  #isEqual: Equality<T>;
-  #tag: Tag;
+  private _value: T;
+  private _isEqual: Equality<T>;
+  private _tag: Tag;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
-    this.#value = value;
+    this._value = value;
 
     if (isEqual === false) {
-      this.#isEqual = neverEqual;
+      this._isEqual = neverEqual;
     } else {
-      this.#isEqual = isEqual;
+      this._isEqual = isEqual;
     }
-    this.#tag = createTag();
+    this._tag = createTag();
   }
 
   get value(): T {
-    markDependency(this.#tag);
-    return this.#value;
+    markDependency(this._tag);
+    return this._value;
   }
 
   set value(v: T) {
-    if (!this.#isEqual(this.#value, v)) {
-      this.#value = v;
-      markUpdate(this.#tag);
+    if (!this._isEqual(this._value, v)) {
+      this._value = v;
+      markUpdate(this._tag);
     }
   }
 
@@ -50,7 +50,7 @@ export class Signal<T> {
   // "peek", rather than using caching tools composed out of the core primitives, or to "be smarter"
   // than the signal system.)
   [Peek](): T {
-    return this.#value;
+    return this._value;
   }
 }
 

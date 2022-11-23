@@ -12,32 +12,32 @@ import type { ReactiveValue } from './types';
 
 type ComputeFn = () => void | (() => void);
 
-export class Effect {
-  #computeFn: ComputeFn;
-  #version: number;
-  #prevTags?: Array<Tag>;
-  #deps?: Array<ReactiveValue<unknown>> | undefined;
-  #cleanupFn?: () => void;
+class Effect {
+  private _computeFn: ComputeFn;
+  private _version: number;
+  private _prevTags?: Array<Tag>;
+  private _deps?: Array<ReactiveValue<unknown>> | undefined;
+  private _cleanupFn?: () => void;
 
   constructor(fn: ComputeFn, deps?: Array<ReactiveValue<unknown>>) {
-    this.#computeFn = fn;
-    this.#version = getVersion();
-    this.#deps = deps;
+    this._computeFn = fn;
+    this._version = getVersion();
+    this._deps = deps;
     registerEffect(this);
     const maybeCleanupFn = this.compute();
 
     if (typeof maybeCleanupFn === 'function') {
-      this.#cleanupFn = maybeCleanupFn;
+      this._cleanupFn = maybeCleanupFn;
     }
   }
 
   get hasDeps(): boolean {
-    return this.#deps ? this.#deps.length > 0 : false;
+    return this._deps ? this._deps.length > 0 : false;
   }
 
-  #computeDeps(): void {
-    if (this.#deps) {
-      this.#deps.forEach((dep) => dep.value);
+  _computeDeps(): void {
+    if (this._deps) {
+      this._deps.forEach((dep) => dep.value);
     }
   }
 
@@ -48,9 +48,9 @@ export class Effect {
 
     setRunningEffect(this);
 
-    this.#computeDeps();
+    this._computeDeps();
 
-    if (this.#prevTags && getMax(this.#prevTags) === this.#version) {
+    if (this._prevTags && getMax(this._prevTags) === this._version) {
       setRunningEffect(null);
       setCurrentContext(prevContext);
       return;
@@ -59,10 +59,10 @@ export class Effect {
     let result: (() => void) | void;
 
     try {
-      result = this.#computeFn();
+      result = this._computeFn();
     } finally {
-      this.#prevTags = Array.from(currentContext);
-      this.#version = getMax(this.#prevTags);
+      this._prevTags = Array.from(currentContext);
+      this._version = getMax(this._prevTags);
 
       setCurrentContext(prevContext);
       setRunningEffect(null);
@@ -72,8 +72,8 @@ export class Effect {
   }
 
   dispose(): boolean {
-    if (this.#cleanupFn) {
-      this.#cleanupFn();
+    if (this._cleanupFn) {
+      this._cleanupFn();
     }
     return removeEffect(this);
   }
