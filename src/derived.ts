@@ -9,7 +9,7 @@ import {
   setCurrentContext,
 } from './state';
 
-export class Derived<T> {
+class Derived<T> {
   private computeFn: () => T;
   private version: number;
   private prevResult?: T;
@@ -108,6 +108,8 @@ export class Derived<T> {
     throw new Error('derived values are readonly');
   }
 }
+
+export type { Derived };
 
 export function createDerived<T>(fn: () => T) {
   return new Derived(fn);

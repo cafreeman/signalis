@@ -79,6 +79,8 @@ class Effect {
   }
 }
 
+export type { Effect };
+
 export function createEffect(fn: () => void, deps?: Array<ReactiveValue<unknown>>): () => boolean {
   const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
