@@ -6,6 +6,10 @@ function baseEquality<T>(oldValue: T, newValue: T) {
   return oldValue === newValue;
 }
 
+function neverEqual(): boolean {
+  return false;
+}
+
 /**
   @private This is available for internal "friend" APIs to use, but it is *not*
     legal to use by consumers.
@@ -21,7 +25,7 @@ export class Signal<T> {
     this.#value = value;
 
     if (isEqual === false) {
-      this.#isEqual = () => false;
+      this.#isEqual = neverEqual;
     } else {
       this.#isEqual = isEqual;
     }
