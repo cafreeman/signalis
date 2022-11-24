@@ -1,0 +1,23 @@
+{
+  "name": "@reactiv/core",
+  "version": "0.0.1",
+  "description": "",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "dev": "vitest",
+    "build": "rm -rf ./dist && tsc -p tsconfig.json"
+  },
+  "keywords": [],
+  "author": "Chris Freeman",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/lodash": "^4.14.189",
+    "lodash": "^4.17.21",
+    "p-defer": "^4.0.0"
+  }
+}
