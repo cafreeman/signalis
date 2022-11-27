@@ -4,23 +4,19 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "vitest run",
-    "dev": "vitest"
+    "lint": "pnpm -r run lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "test": "pnpm -r test"
   },
   "keywords": [],
   "author": "Chris Freeman",
   "license": "MIT",
   "devDependencies": {
     "@tsconfig/node-lts-strictest": "^18.12.1",
-    "@types/lodash": "^4.14.189",
     "@typescript-eslint/eslint-plugin": "^5.43.0",
     "@typescript-eslint/parser": "^5.43.0",
     "eslint": "^8.28.0",
     "eslint-config-prettier": "^8.5.0",
-    "lodash": "^4.17.21",
-    "p-defer": "^4.0.0",
     "prettier": "^2.7.1",
     "typescript": "^4.9.3",
     "vitest": "^0.25.2"

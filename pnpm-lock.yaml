@@ -1,30 +1,42 @@
 lockfileVersion: 5.4
 
-specifiers:
-  '@tsconfig/node-lts-strictest': ^18.12.1
-  '@types/lodash': ^4.14.189
-  '@typescript-eslint/eslint-plugin': ^5.43.0
-  '@typescript-eslint/parser': ^5.43.0
-  eslint: ^8.28.0
-  eslint-config-prettier: ^8.5.0
-  lodash: ^4.17.21
-  p-defer: ^4.0.0
-  prettier: ^2.7.1
-  typescript: ^4.9.3
-  vitest: ^0.25.2
+importers:
 
-devDependencies:
-  '@tsconfig/node-lts-strictest': 18.12.1
-  '@types/lodash': 4.14.189
-  '@typescript-eslint/eslint-plugin': 5.43.0_nqj4bdx4ekws7aecttskpih4py
-  '@typescript-eslint/parser': 5.43.0_hsf322ms6xhhd4b5ne6lb74y4a
-  eslint: 8.28.0
-  eslint-config-prettier: 8.5.0_eslint@8.28.0
-  lodash: 4.17.21
-  p-defer: 4.0.0
-  prettier: 2.7.1
-  typescript: 4.9.3
-  vitest: 0.25.2
+  .:
+    specifiers:
+      '@tsconfig/node-lts-strictest': ^18.12.1
+      '@typescript-eslint/eslint-plugin': ^5.43.0
+      '@typescript-eslint/parser': ^5.43.0
+      eslint: ^8.28.0
+      eslint-config-prettier: ^8.5.0
+      prettier: ^2.7.1
+      typescript: ^4.9.3
+      vitest: ^0.25.2
+    devDependencies:
+      '@tsconfig/node-lts-strictest': 18.12.1
+      '@typescript-eslint/eslint-plugin': 5.43.0_nqj4bdx4ekws7aecttskpih4py
+      '@typescript-eslint/parser': 5.43.0_hsf322ms6xhhd4b5ne6lb74y4a
+      eslint: 8.28.0
+      eslint-config-prettier: 8.5.0_eslint@8.28.0
+      prettier: 2.7.1
+      typescript: 4.9.3
+      vitest: 0.25.2
+
+  packages/core:
+    specifiers:
+      '@types/lodash': ^4.14.189
+      lodash: ^4.17.21
+      p-defer: ^4.0.0
+    devDependencies:
+      '@types/lodash': 4.14.189
+      lodash: 4.17.21
+      p-defer: 4.0.0
+
+  packages/react:
+    specifiers:
+      '@reactiv/core': workspace:*
+    dependencies:
+      '@reactiv/core': link:../core
 
 packages:
 
