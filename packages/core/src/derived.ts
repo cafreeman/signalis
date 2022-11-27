@@ -1,19 +1,28 @@
-import { markDependency, markUpdate, getMax, createTag, REVISION, Tagged } from './tag';
 import {
   addTagToCurrentContext,
-  setupCurrentContext,
   getCurrentContext,
   getVersion,
   isEffectRunning,
   runningEffectHasDeps,
+  runningReactionIsInitialized,
   setCurrentContext,
+  setupCurrentContext,
 } from './state';
+import {
+  createTag,
+  getMax,
+  markDependency,
+  markUpdate,
+  REVISION,
+  Tagged,
+  TaggedValue,
+} from './tag';
 
 class Derived<T> implements Tagged {
   private computeFn: () => T;
   private version = getVersion();
   private prevResult?: T;
-  private prevTags?: Array<Tagged>;
+  private prevTags?: Array<TaggedValue>;
 
   [REVISION] = createTag();
 
@@ -26,7 +35,7 @@ class Derived<T> implements Tagged {
   }
 
   get value(): T {
-    // No matter what, we call `markDependency` immediately so that this derived value gets
+    // We call `markDependency` immediately so that this derived value gets
     // identified as a dependency of whoever accessed it no matter what
     markDependency(this);
 
@@ -37,7 +46,8 @@ class Derived<T> implements Tagged {
       // dependencies are added to the current compute context so that downstream dependents
       // can tell when to recompute
       if (prevContext && this.prevTags.length > 0) {
-        if (!runningEffectHasDeps()) {
+        if (!runningReactionIsInitialized()) {
+          console.log('tracking all deps');
           this.prevTags.forEach((tag) => {
             addTagToCurrentContext(tag);
           });

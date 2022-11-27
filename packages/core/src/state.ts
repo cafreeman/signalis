@@ -1,16 +1,21 @@
-import type { Derived } from './derived';
 import type { Effect } from './effect';
-import type { Tag, Tagged } from './tag';
+import type { Reaction } from './reaction';
+import type { Tag, TaggedValue } from './tag';
+import type { DerivedFunction, ReactiveValue } from './types';
 
-export type Context = Set<Tagged>;
+export type Context = Set<TaggedValue>;
+export type EffectRegistry = WeakMap<ReactiveValue, Set<Reaction>>;
 
 interface State {
   version: Tag;
   batchCount: number;
-  contexts: WeakMap<Derived<unknown> | Effect, Context>;
+  contexts: WeakMap<DerivedFunction, Context>;
   currentContext: Context | null;
   effects: Set<Effect>;
+  reactionRegistry: EffectRegistry;
+  pendingReactions: Array<Reaction>;
   runningEffect: Effect | null;
+  runningReaction: Reaction | null;
   onTagDirtied: () => void;
 }
 
@@ -22,18 +27,21 @@ const STATE: State = {
 
   batchCount: 0,
 
-  contexts: new WeakMap<Derived<unknown> | Effect, Set<Tagged>>(),
+  contexts: new WeakMap<DerivedFunction, Context>(),
   currentContext: null,
 
   effects: new Set<Effect>(),
+  reactionRegistry: new WeakMap<ReactiveValue, Set<Reaction>>(),
+  pendingReactions: [],
   runningEffect: null,
+  runningReaction: null,
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   onTagDirtied: () => {},
 };
 
 // Tags
-export function addTagToCurrentContext(t: Tagged) {
+export function addTagToCurrentContext(t: TaggedValue) {
   if (STATE.currentContext) {
     STATE.currentContext.add(t);
   }
@@ -57,8 +65,7 @@ export function incrementVersion(): Tag {
 }
 
 // Context
-
-export function hasCurrentContext(t: Tagged): boolean {
+export function hasCurrentContext(t: TaggedValue): boolean {
   return !!STATE.currentContext && STATE.currentContext.has(t);
 }
 
@@ -72,11 +79,11 @@ export function setCurrentContext(context: Context | null) {
 // This function will either fetch the context associated with current reactive value, or create
 // a new one if it doesn't already exist, and prepare it to run by clearing it and setting it
 // as the new current context.
-export function setupCurrentContext(k: Derived<unknown> | Effect): Set<Tagged> {
+export function setupCurrentContext(k: DerivedFunction): Context {
   let context = STATE.contexts.get(k);
 
   if (!context) {
-    context = new Set<Tagged>();
+    context = new Set<TaggedValue>();
     STATE.contexts.set(k, context);
   }
 
@@ -88,7 +95,6 @@ export function setupCurrentContext(k: Derived<unknown> | Effect): Set<Tagged> {
 }
 
 // Effects
-
 export function isEffectRunning(): boolean {
   return !!STATE.runningEffect;
 }
@@ -115,16 +121,80 @@ export function runEffects(): void {
   });
 }
 
-// Batching
+// Reactions
+export function isReactionRunning(): boolean {
+  return !!STATE.runningReaction;
+}
 
+export function runningReactionHasDeps(): boolean {
+  return !!STATE.runningReaction && STATE.runningReaction.hasDeps;
+}
+
+export function runningReactionIsInitialized(): boolean {
+  return !!STATE.runningReaction && STATE.runningReaction.initialized;
+}
+
+export function runningReactionIsFinalized(): boolean {
+  return !!STATE.runningReaction && STATE.runningReaction.finalized;
+}
+
+export function setRunningReaction(reaction: Reaction | null): void {
+  STATE.runningReaction = reaction;
+}
+
+// Batching
 export function batchStart(): void {
   STATE.batchCount++;
 }
 
+export function inBatch(): boolean {
+  return STATE.batchCount > 0;
+}
+
 export function batchEnd(): void {
   STATE.batchCount--;
+  if (STATE.batchCount === 0) {
+    runPendingReactions();
+  }
 }
 
 export function batchCount(): number {
   return STATE.batchCount;
+}
+
+// Reaction Registry
+export function registerDependencyForReaction(dep: ReactiveValue, reaction: Reaction) {
+  const entry = STATE.reactionRegistry.get(dep);
+
+  if (entry) {
+    entry.add(reaction);
+  } else {
+    STATE.reactionRegistry.set(dep, new Set([reaction]));
+  }
+}
+
+export function runReactionsForReactiveValue(dep: ReactiveValue) {
+  const entry = STATE.reactionRegistry.get(dep);
+
+  if (entry) {
+    entry.forEach((reaction) => {
+      if (reaction.isDisposed) {
+        entry.delete(reaction);
+      } else {
+        reaction.schedule();
+      }
+    });
+    runPendingReactions();
+  }
+}
+
+export function scheduleReaction(r: Reaction) {
+  STATE.pendingReactions.push(r);
+}
+
+export function runPendingReactions() {
+  while (STATE.pendingReactions.length > 0) {
+    const reaction = STATE.pendingReactions.shift();
+    reaction?.compute();
+  }
 }

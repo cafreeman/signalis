@@ -7,19 +7,19 @@ import {
   setCurrentContext,
   removeEffect,
 } from './state';
-import { getMax, Tagged } from './tag';
+import { getMax, TaggedValue } from './tag';
 import type { ReactiveValue } from './types';
 
-type ComputeFn = () => void | (() => void);
+export type ComputeFn = () => void | (() => void);
 
 class Effect {
   private _computeFn: ComputeFn;
   private _version: number;
-  private _prevTags?: Array<Tagged>;
-  private _deps?: Array<ReactiveValue<unknown>> | undefined;
+  private _prevTags?: Array<TaggedValue>;
+  private _deps?: Array<ReactiveValue> | undefined;
   private _cleanupFn?: () => void;
 
-  constructor(fn: ComputeFn, deps?: Array<ReactiveValue<unknown>>) {
+  constructor(fn: ComputeFn, deps?: Array<ReactiveValue>) {
     this._computeFn = fn;
     this._version = getVersion();
     this._deps = deps;
@@ -81,7 +81,7 @@ class Effect {
 
 export type { Effect };
 
-export function createEffect(fn: () => void, deps?: Array<ReactiveValue<unknown>>): () => boolean {
+export function createEffect(fn: () => void, deps?: Array<ReactiveValue>): () => boolean {
   const effect = new Effect(fn, deps);
   return effect.dispose.bind(effect);
 }
