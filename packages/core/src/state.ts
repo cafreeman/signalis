@@ -1,28 +1,29 @@
 import type { Derived } from './derived';
 import type { Effect } from './effect';
+import type { Sink } from './sink';
 import type { Tag, Tagged } from './tag';
 
 export type Context = Set<Tagged>;
+type ContextOwner = Derived<unknown> | Effect | Sink;
 
 interface State {
   version: Tag;
   batchCount: number;
-  contexts: WeakMap<Derived<unknown> | Effect, Context>;
+  contexts: WeakMap<ContextOwner, Context>;
   currentContext: Context | null;
   effects: Set<Effect>;
   runningEffect: Effect | null;
-  onTagDirtied: () => void;
+  onTagDirtied: (verson: Tag) => void;
 }
 
 // SAFETY: this state object is responsible for the global `Tag` count, and so
 // consistently casts its `version` as `Tag` internally.
-
 const STATE: State = {
   version: 0 as Tag,
 
   batchCount: 0,
 
-  contexts: new WeakMap<Derived<unknown> | Effect, Set<Tagged>>(),
+  contexts: new WeakMap<ContextOwner, Set<Tagged>>(),
   currentContext: null,
 
   effects: new Set<Effect>(),
@@ -32,6 +33,8 @@ const STATE: State = {
   onTagDirtied: () => {},
 };
 
+console.log('state', STATE);
+
 // Tags
 export function addTagToCurrentContext(t: Tagged) {
   if (STATE.currentContext) {
@@ -40,10 +43,10 @@ export function addTagToCurrentContext(t: Tagged) {
 }
 
 export function onTagDirtied() {
-  return STATE.onTagDirtied();
+  return STATE.onTagDirtied(STATE.version);
 }
 
-export function setOnTagDirtied(fn: () => void): void {
+export function setOnTagDirtied(fn: (version: Tag) => void): void {
   STATE.onTagDirtied = fn;
 }
 
@@ -57,7 +60,6 @@ export function incrementVersion(): Tag {
 }
 
 // Context
-
 export function hasCurrentContext(t: Tagged): boolean {
   return !!STATE.currentContext && STATE.currentContext.has(t);
 }
@@ -72,7 +74,7 @@ export function setCurrentContext(context: Context | null) {
 // This function will either fetch the context associated with current reactive value, or create
 // a new one if it doesn't already exist, and prepare it to run by clearing it and setting it
 // as the new current context.
-export function setupCurrentContext(k: Derived<unknown> | Effect): Set<Tagged> {
+export function setupCurrentContext(k: ContextOwner): Context {
   let context = STATE.contexts.get(k);
 
   if (!context) {
@@ -88,7 +90,6 @@ export function setupCurrentContext(k: Derived<unknown> | Effect): Set<Tagged> {
 }
 
 // Effects
-
 export function isEffectRunning(): boolean {
   return !!STATE.runningEffect;
 }
@@ -98,6 +99,7 @@ export function runningEffectHasDeps(): boolean {
 }
 
 export function registerEffect(effect: Effect): Set<Effect> {
+  console.log('register effect', effect);
   return STATE.effects.add(effect);
 }
 
@@ -110,13 +112,13 @@ export function setRunningEffect(effect: Effect | null): void {
 }
 
 export function runEffects(): void {
+  console.log('RUN EFFECTS', STATE.effects);
   STATE.effects.forEach((effect) => {
     effect.compute();
   });
 }
 
 // Batching
-
 export function batchStart(): void {
   STATE.batchCount++;
 }

@@ -3,17 +3,17 @@ import {
   addTagToCurrentContext,
   setupCurrentContext,
   getCurrentContext,
-  getVersion,
   isEffectRunning,
   runningEffectHasDeps,
   setCurrentContext,
+  getVersion,
 } from './state';
 
 class Derived<T> implements Tagged {
   private computeFn: () => T;
-  private version = getVersion();
   private prevResult?: T;
   private prevTags?: Array<Tagged>;
+  private version = getVersion();
 
   [REVISION] = createTag();
 

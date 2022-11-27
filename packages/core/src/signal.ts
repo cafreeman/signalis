@@ -1,3 +1,4 @@
+import { isEffectRunning } from './state';
 import { createTag, markDependency, markUpdate, REVISION, type Tagged } from './tag';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
@@ -40,6 +41,8 @@ class _Signal<T> implements Tagged {
   set value(v: T) {
     if (!this._isEqual(this._value, v)) {
       this._value = v;
+      console.log('mark signal update');
+      console.log('is effect running during signal update', isEffectRunning());
       markUpdate(this);
     }
   }
@@ -69,6 +72,7 @@ export function createSignal<T extends {}>(
   value?: T,
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<unknown> {
+  console.log('CREATE SIGNAL');
   if (arguments.length === 0) {
     return new _Signal(null as unknown, false);
   } else {
@@ -77,4 +81,8 @@ export function createSignal<T extends {}>(
     // to treat `value` as indicating what `T` must be.
     return new _Signal(value as T, isEqual);
   }
+}
+
+export function isSignal(s: _Signal<unknown> | unknown) {
+  return s instanceof _Signal;
 }

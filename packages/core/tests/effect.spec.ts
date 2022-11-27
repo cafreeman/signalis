@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { createDerived, createSignal } from '../src';
-import { createEffect } from '../src/effect';
+import { createEffect, Effect } from '../src/effect';
 
 describe('Effect', () => {
   test('it works', () => {
@@ -143,6 +143,33 @@ describe('Effect', () => {
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
     expect(effectValue).toEqual('BAZ');
+  });
+
+  test('multiple related effects', () => {
+    const foo = createSignal(0);
+
+    let effect!: Effect;
+
+    let effect1: number;
+    let effect2: number;
+
+    createEffect(function (this: Effect) {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      effect = this;
+      effect1 = foo.value;
+    });
+
+    createEffect(() => {
+      effect2 = foo.value;
+    });
+
+    expect(effect1!).toEqual(0);
+    expect(effect2!).toEqual(0);
+
+    foo.value = 1;
+
+    expect(effect1!).toEqual(1);
+    expect(effect2!).toEqual(1);
   });
 
   test('can dispose', () => {

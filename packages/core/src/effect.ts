@@ -1,23 +1,32 @@
 import {
-  registerEffect,
-  setupCurrentContext,
+  Context,
   getCurrentContext,
   getVersion,
-  setRunningEffect,
-  setCurrentContext,
+  registerEffect,
   removeEffect,
+  setCurrentContext,
+  setRunningEffect,
+  setupCurrentContext,
 } from './state';
 import { getMax, Tagged } from './tag';
 import type { ReactiveValue } from './types';
 
 type ComputeFn = () => void | (() => void);
 
+type STARTED = typeof STARTED;
+const STARTED = 'started';
+type STOPPED = typeof STOPPED;
+const STOPPED = 'stopped';
+
 class Effect {
-  private _computeFn: ComputeFn;
+  _computeFn: ComputeFn;
   private _version: number;
   private _prevTags?: Array<Tagged>;
   private _deps?: Array<ReactiveValue<unknown>> | undefined;
   private _cleanupFn?: () => void;
+  private _status: STARTED | STOPPED = STOPPED;
+  private _prevContext: Context | null = null;
+  private _currentContext: Context | null = null;
 
   constructor(fn: ComputeFn, deps?: Array<ReactiveValue<unknown>>) {
     this._computeFn = fn;
@@ -41,18 +50,41 @@ class Effect {
     }
   }
 
-  compute(): (() => void) | void {
-    const prevContext = getCurrentContext();
+  _start() {
+    this._status = STARTED;
+    this._prevContext = getCurrentContext();
 
-    const currentContext = setupCurrentContext(this);
+    this._currentContext = setupCurrentContext(this);
+  }
+
+  _stop() {
+    if (this._currentContext) {
+      this._prevTags = Array.from(this._currentContext);
+      this._version = getMax(this._prevTags);
+    }
+
+    this._prevContext = null;
+    setCurrentContext(this._prevContext);
+    setRunningEffect(null);
+    this._status = STOPPED;
+  }
+
+  compute(): (() => void) | void {
+    if (this._status === STOPPED) {
+      this._start();
+    }
 
     setRunningEffect(this);
 
     this._computeDeps();
 
+    console.log('effect prev tags', this._prevTags);
+
     if (this._prevTags && getMax(this._prevTags) === this._version) {
+      this._prevContext = null;
+      setCurrentContext(this._prevContext);
       setRunningEffect(null);
-      setCurrentContext(prevContext);
+      this._status = STOPPED;
       return;
     }
 
@@ -61,17 +93,14 @@ class Effect {
     try {
       result = this._computeFn();
     } finally {
-      this._prevTags = Array.from(currentContext);
-      this._version = getMax(this._prevTags);
-
-      setCurrentContext(prevContext);
-      setRunningEffect(null);
+      this._stop();
     }
 
     return result;
   }
 
   dispose(): boolean {
+    console.log('DISPOSE EFFECT');
     if (this._cleanupFn) {
       this._cleanupFn();
     }
