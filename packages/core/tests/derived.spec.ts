@@ -86,6 +86,32 @@ describe('Derived', () => {
     expect(uppercaseSpy).toHaveBeenCalledTimes(3);
   });
 
+  test('chain of derived values', () => {
+    const foo = createSignal(0);
+
+    const a = createDerived(() => {
+      return foo.value;
+    });
+
+    const b = createDerived(() => {
+      return a.value;
+    });
+
+    const c = createDerived(() => {
+      return b.value;
+    });
+
+    const d = createDerived(() => {
+      return c.value;
+    });
+
+    expect(d.value).toEqual(0);
+
+    foo.value = 1;
+
+    expect(d.value).toEqual(1);
+  });
+
   test('it can depend on arrays', () => {
     const someArray = createSignal<Array<number>>([]);
 

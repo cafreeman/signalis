@@ -1,27 +1,23 @@
-import type { Effect } from './effect';
 import type { Reaction } from './reaction';
 import type { Tag, TaggedValue } from './tag';
 import type { DerivedFunction, ReactiveValue } from './types';
 
 export type Context = Set<TaggedValue>;
-export type EffectRegistry = WeakMap<ReactiveValue, Set<Reaction>>;
+export type ReactionRegistry = WeakMap<ReactiveValue, Set<Reaction>>;
 
 interface State {
   version: Tag;
   batchCount: number;
   contexts: WeakMap<DerivedFunction, Context>;
   currentContext: Context | null;
-  effects: Set<Effect>;
-  reactionRegistry: EffectRegistry;
+  reactionRegistry: ReactionRegistry;
   pendingReactions: Array<Reaction>;
-  runningEffect: Effect | null;
   runningReaction: Reaction | null;
   onTagDirtied: () => void;
 }
 
 // SAFETY: this state object is responsible for the global `Tag` count, and so
 // consistently casts its `version` as `Tag` internally.
-
 const STATE: State = {
   version: 0 as Tag,
 
@@ -30,10 +26,8 @@ const STATE: State = {
   contexts: new WeakMap<DerivedFunction, Context>(),
   currentContext: null,
 
-  effects: new Set<Effect>(),
   reactionRegistry: new WeakMap<ReactiveValue, Set<Reaction>>(),
   pendingReactions: [],
-  runningEffect: null,
   runningReaction: null,
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -94,33 +88,6 @@ export function setupCurrentContext(k: DerivedFunction): Context {
   return context;
 }
 
-// Effects
-export function isEffectRunning(): boolean {
-  return !!STATE.runningEffect;
-}
-
-export function runningEffectHasDeps(): boolean {
-  return !!STATE.runningEffect && STATE.runningEffect.hasDeps;
-}
-
-export function registerEffect(effect: Effect): Set<Effect> {
-  return STATE.effects.add(effect);
-}
-
-export function removeEffect(effect: Effect): boolean {
-  return STATE.effects.delete(effect);
-}
-
-export function setRunningEffect(effect: Effect | null): void {
-  STATE.runningEffect = effect;
-}
-
-export function runEffects(): void {
-  STATE.effects.forEach((effect) => {
-    effect.compute();
-  });
-}
-
 // Reactions
 export function isReactionRunning(): boolean {
   return !!STATE.runningReaction;
@@ -173,10 +140,11 @@ export function registerDependencyForReaction(dep: ReactiveValue, reaction: Reac
   }
 }
 
-export function runReactionsForReactiveValue(dep: ReactiveValue) {
+export function scheduleReactionsForReactiveValue(dep: ReactiveValue) {
   const entry = STATE.reactionRegistry.get(dep);
 
   if (entry) {
+    batchStart();
     entry.forEach((reaction) => {
       if (reaction.isDisposed) {
         entry.delete(reaction);
@@ -184,7 +152,7 @@ export function runReactionsForReactiveValue(dep: ReactiveValue) {
         reaction.schedule();
       }
     });
-    runPendingReactions();
+    batchEnd();
   }
 }
 

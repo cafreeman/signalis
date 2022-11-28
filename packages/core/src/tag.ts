@@ -1,14 +1,10 @@
 import {
   addTagToCurrentContext,
-  batchCount,
   getVersion,
   hasCurrentContext,
-  inBatch,
   incrementVersion,
-  isEffectRunning,
   onTagDirtied,
-  runEffects,
-  runReactionsForReactiveValue,
+  scheduleReactionsForReactiveValue,
 } from './state';
 import type { ReactiveValue } from './types';
 
@@ -46,18 +42,7 @@ export function markUpdate(t: TaggedValue): void {
 
   t[REVISION] = incrementVersion();
 
-  // If we run effects on *every* update, then we'll end up executing them > 1 times for every
-  // derived value that an effect depends on, since the effect will trigger a recompute of the
-  // derived value. Instead, we let the full pass over the effects happen once and only once.
-  // if (!isEffectRunning()) {
-  //   if (batchCount() === 0) {
-  //     runEffects();
-  //   }
-  // }
-
-  if (!inBatch()) {
-    runReactionsForReactiveValue(t);
-  }
+  scheduleReactionsForReactiveValue(t);
 
   onTagDirtied();
 }

@@ -27,7 +27,7 @@ describe('reaction', () => {
   test('it works with derived values', () => {
     const foo = createSignal(0);
     const isOdd = createDerived(() => {
-      return foo.value % 2 === 0;
+      return foo.value % 2 !== 0;
     });
 
     let result!: boolean;
@@ -38,18 +38,16 @@ describe('reaction', () => {
 
     new Reaction(spy);
 
-    expect(result).toBe(true);
+    expect(result).toBe(false);
     expect(spy).toHaveBeenCalledOnce();
 
-    console.log('first update');
     foo.value = 1;
 
-    expect(result).toBe(false);
+    expect(result).toBe(true);
     expect(spy).toHaveBeenCalledTimes(2);
 
-    console.log('second update');
     foo.value = 2;
-    expect(result).toBe(true);
+    expect(result).toBe(false);
     expect(spy).toHaveBeenCalledTimes(3);
   });
 
@@ -68,12 +66,10 @@ describe('reaction', () => {
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
-    console.log('first update');
     foo.value = 1;
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
 
-    console.log('second update');
     foo.value = 3;
 
     expect(effectSpy).toHaveBeenCalledTimes(2);

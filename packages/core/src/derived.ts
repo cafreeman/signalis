@@ -2,8 +2,6 @@ import {
   addTagToCurrentContext,
   getCurrentContext,
   getVersion,
-  isEffectRunning,
-  runningEffectHasDeps,
   runningReactionIsInitialized,
   setCurrentContext,
   setupCurrentContext,
@@ -47,7 +45,6 @@ class Derived<T> implements Tagged {
       // can tell when to recompute
       if (prevContext && this.prevTags.length > 0) {
         if (!runningReactionIsInitialized()) {
-          console.log('tracking all deps');
           this.prevTags.forEach((tag) => {
             addTagToCurrentContext(tag);
           });
@@ -81,26 +78,6 @@ class Derived<T> implements Tagged {
     } finally {
       this.prevTags = Array.from(currentContext);
       this.version = getMax(this.prevTags);
-
-      // Since effects are never accessed directly (like signals and derived values), it's impossible
-      // to know when an effect that depends on a derived value needs to be recomputed, since we
-      // won't know whether the derived value has changed until we access its value. The most basic
-      // solution here is to simply always run every effect, but that would be probitively expensive
-      // from a performance standpoint. Instead, whenever a derived value recomputes AND we know
-      // we're in the middle of an effect computation, we add that derived value's dependencies as
-      // direct dependencies on the effect. That way the effect will know to recompute even if
-      // the derived value itself hasn't been re-run and marked as updated
-      if (isEffectRunning() && prevContext) {
-        // If the effect has specified its own dependencies, then we want to skip this so we don't
-        // add extra dependencies to the effect
-        if (!runningEffectHasDeps()) {
-          currentContext.forEach((c) => {
-            // We definitely know prevCompute is defined already but TS does not agree since we're
-            // in a callback here, so adding the extra assertion just to be thorough
-            prevContext && prevContext.add(c);
-          });
-        }
-      }
 
       if (shouldMarkUpdate) {
         markUpdate(this);

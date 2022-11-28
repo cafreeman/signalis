@@ -62,7 +62,7 @@ describe('Effect', () => {
       isOdd.value;
     });
 
-    createEffect(effectSpy, [isOdd]);
+    createEffect(effectSpy);
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
@@ -158,7 +158,7 @@ describe('Effect', () => {
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
 
-    expect(dispose()).to.be.true;
+    dispose();
 
     foo.value++;
 
@@ -172,19 +172,22 @@ describe('Effect', () => {
 
     const effectSpy = vi.fn(() => {
       foo.value;
-      return () => {
-        didCleanup = true;
-      };
     });
 
-    const dispose = createEffect(effectSpy);
+    const cleanupSpy = vi.fn(() => {
+      didCleanup = true;
+    });
+
+    const dispose = createEffect(effectSpy, cleanupSpy);
 
     foo.value++;
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
     expect(didCleanup).to.be.false;
 
-    expect(dispose()).to.be.true;
+    dispose();
+
+    expect(cleanupSpy).toHaveBeenCalledOnce();
 
     foo.value++;
 
