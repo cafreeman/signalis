@@ -1,4 +1,4 @@
-import { batchCount, batchEnd, batchStart, runEffects } from './state';
+import { batchEnd, batchStart } from './state';
 
 export function batch(cb: () => void) {
   batchStart();
@@ -6,8 +6,4 @@ export function batch(cb: () => void) {
   cb();
 
   batchEnd();
-
-  if (batchCount() === 0) {
-    runEffects();
-  }
 }

@@ -1,13 +1,12 @@
 import {
   addTagToCurrentContext,
-  batchCount,
   getVersion,
   hasCurrentContext,
   incrementVersion,
-  isEffectRunning,
   onTagDirtied,
-  runEffects,
+  scheduleReactionsForReactiveValue,
 } from './state';
+import type { ReactiveValue } from './types';
 
 // Type-only, zero-cost way of making type-safe "new types".
 declare const DataTag: unique symbol;
@@ -30,30 +29,25 @@ export interface Tagged {
   [REVISION]: Tag;
 }
 
-export function markDependency(t: Tagged): void {
+export type TaggedValue = Tagged & ReactiveValue;
+
+export function markDependency(t: TaggedValue): void {
   addTagToCurrentContext(t);
 }
 
-export function markUpdate(t: Tagged): void {
+export function markUpdate(t: TaggedValue): void {
   if (hasCurrentContext(t)) {
     throw new Error('Cannot update a tag that has been used during a computation.');
   }
 
   t[REVISION] = incrementVersion();
 
-  // If we run effects on *every* update, then we'll end up executing them > 1 times for every
-  // derived value that an effect depends on, since the effect will trigger a recompute of the
-  // derived value. Instead, we let the full pass over the effects happen once and only once.
-  if (!isEffectRunning()) {
-    if (batchCount() === 0) {
-      runEffects();
-    }
-  }
+  scheduleReactionsForReactiveValue(t);
 
   onTagDirtied();
 }
 
-export function getMax(taggedItems: Iterable<Tagged>): Tag {
+export function getMax(taggedItems: Iterable<TaggedValue>): Tag {
   // We could also do a `.reduce()`; the key is to make sure we avoid ever running *multiple*
   // passes on the set of tags. Doing multiple `Math.max()` checks should be cheaper, especially in
   // terms of allocation, than doing the extra Array allocations.

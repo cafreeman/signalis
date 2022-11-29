@@ -59,6 +59,50 @@ describe('batch', () => {
     expect(effectSpy).toHaveBeenCalledTimes(2);
   });
 
+  test('effect with multiple updates to the same value', () => {
+    const foo = createSignal(0);
+
+    let effectResult = foo.value;
+
+    const effectSpy = vi.fn(() => {
+      effectResult = foo.value;
+    });
+
+    createEffect(effectSpy);
+
+    expect(effectSpy).toHaveBeenCalledOnce();
+    expect(effectResult).toEqual(0);
+
+    batch(() => {
+      foo.value = 1;
+      foo.value = 2;
+    });
+
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+    expect(effectResult).toEqual(2);
+  });
+
+  test('derived with multiple updates to the same value', () => {
+    const foo = createSignal(0);
+
+    const derivedSpy = vi.fn(() => {
+      return foo.value;
+    });
+
+    const derived = createDerived(derivedSpy);
+
+    expect(derivedSpy).toHaveBeenCalledOnce();
+    expect(derived.value).toEqual(0);
+
+    batch(() => {
+      foo.value = 1;
+      foo.value = 2;
+    });
+
+    expect(derived.value).toEqual(2);
+    expect(derivedSpy).toHaveBeenCalledTimes(2);
+  });
+
   test('nested batch with derived should only update when the outermost batch resolves', () => {
     const todos = createSignal<Array<{ text: string }>>([]);
     const text = createSignal('foo');
@@ -141,5 +185,53 @@ describe('batch', () => {
     });
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test('a big mess of interactions', () => {
+    const foo = createSignal(0);
+    const bar = createSignal(0);
+
+    const isFooOdd = createDerived(() => {
+      return foo.value % 2 === 0;
+    });
+
+    const isBarOdd = createDerived(() => {
+      return bar.value % 2 === 0;
+    });
+
+    const fooSpy = vi.fn(() => {
+      foo.value;
+      isFooOdd.value;
+    });
+
+    createEffect(fooSpy);
+
+    const barSpy = vi.fn(() => {
+      bar.value;
+      isBarOdd.value;
+    });
+
+    createEffect(barSpy);
+
+    const fooBarSpy = vi.fn(() => {
+      foo.value;
+      bar.value;
+      isFooOdd.value;
+      isBarOdd.value;
+    });
+
+    createEffect(fooBarSpy);
+
+    batch(() => {
+      foo.value = 1;
+      bar.value = 1;
+
+      isFooOdd.value;
+      isBarOdd.value;
+    });
+
+    expect(fooSpy).toHaveBeenCalledTimes(2);
+    expect(barSpy).toHaveBeenCalledTimes(2);
+    expect(fooBarSpy).toHaveBeenCalledTimes(2);
   });
 });

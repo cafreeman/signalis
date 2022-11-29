@@ -1,54 +1,54 @@
 import { describe, expect, test, vi } from 'vitest';
-import { createDerived, createSignal } from '../src';
-import { createEffect } from '../src/effect';
+import { createDerived } from '../src/derived';
+import { Reaction } from '../src/reaction';
+import { createSignal } from '../src/signal';
 
-describe('Effect', () => {
+describe('reaction', () => {
   test('it works', () => {
     const foo = createSignal(0);
 
-    const effectSpy = vi.fn(() => {
-      foo.value;
+    let result!: number;
+
+    const spy = vi.fn(() => {
+      result = foo.value;
     });
 
-    createEffect(effectSpy);
+    new Reaction(spy);
 
-    expect(effectSpy).toHaveBeenCalledOnce();
+    expect(result).toEqual(0);
+    expect(spy).toHaveBeenCalledOnce();
 
-    foo.value++;
+    foo.value = 2;
 
-    expect(effectSpy).toHaveBeenCalledTimes(2);
-
-    foo.value++;
-
-    expect(effectSpy).toHaveBeenCalledTimes(3);
+    expect(result).toEqual(2);
+    expect(spy).toHaveBeenCalledTimes(2);
   });
 
   test('it works with derived values', () => {
-    const foo = createSignal('foo');
-
-    const uppercase = createDerived(() => {
-      return foo.value.toUpperCase();
+    const foo = createSignal(0);
+    const isOdd = createDerived(() => {
+      return foo.value % 2 !== 0;
     });
 
-    let effectValue = '';
+    let result!: boolean;
 
-    const effectSpy = vi.fn(() => {
-      effectValue = uppercase.value;
+    const spy = vi.fn(() => {
+      result = isOdd.value;
     });
 
-    createEffect(effectSpy);
+    new Reaction(spy);
 
-    expect(effectSpy).toHaveBeenCalledOnce();
+    expect(result).toBe(false);
+    expect(spy).toHaveBeenCalledOnce();
 
-    foo.value = 'bar';
+    foo.value = 1;
 
-    expect(effectValue).toEqual('BAR');
-    expect(effectSpy).toHaveBeenCalledTimes(2);
+    expect(result).toBe(true);
+    expect(spy).toHaveBeenCalledTimes(2);
 
-    foo.value = 'baz';
-
-    expect(effectValue).toEqual('BAZ');
-    expect(effectSpy).toHaveBeenCalledTimes(3);
+    foo.value = 2;
+    expect(result).toBe(false);
+    expect(spy).toHaveBeenCalledTimes(3);
   });
 
   test('it only recomputes when its direct dependencies have actually changed', () => {
@@ -62,7 +62,7 @@ describe('Effect', () => {
       isOdd.value;
     });
 
-    createEffect(effectSpy);
+    new Reaction(effectSpy);
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
@@ -97,7 +97,7 @@ describe('Effect', () => {
       effectValue = `Combining ${firstNameUppercase.value} and ${lastNameUppercase.value} to create ${fullName.value}`;
     });
 
-    createEffect(effectSpy);
+    new Reaction(effectSpy);
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
@@ -126,7 +126,7 @@ describe('Effect', () => {
       effectValue = uppercaseBar.value;
     });
 
-    createEffect(effectSpy);
+    new Reaction(effectSpy);
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
@@ -152,13 +152,13 @@ describe('Effect', () => {
       foo.value;
     });
 
-    const dispose = createEffect(effectSpy);
+    const reaction = new Reaction(effectSpy);
 
     foo.value++;
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
 
-    dispose();
+    reaction.dispose();
 
     foo.value++;
 
@@ -174,32 +174,26 @@ describe('Effect', () => {
       foo.value;
     });
 
-    const cleanupSpy = vi.fn(() => {
-      didCleanup = true;
-    });
-
-    const dispose = createEffect(effectSpy, cleanupSpy);
+    const reaction = new Reaction(effectSpy, () => (didCleanup = true));
 
     foo.value++;
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
-    expect(didCleanup).to.be.false;
+    expect(didCleanup).toBe(false);
 
-    dispose();
-
-    expect(cleanupSpy).toHaveBeenCalledOnce();
+    reaction.dispose();
 
     foo.value++;
 
     expect(effectSpy).toHaveBeenCalledTimes(2);
-    expect(didCleanup).to.be.true;
+    expect(didCleanup).toBe(true);
   });
 
   test('prevents you from mutating dependencies inside of an effect in order to prevent cycles', () => {
     const foo = createSignal(0);
 
     const effectWrapper = () => {
-      createEffect(() => {
+      new Reaction(() => {
         foo.value++;
       });
 
