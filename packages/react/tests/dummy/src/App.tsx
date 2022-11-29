@@ -1,9 +1,11 @@
-import Stopwatch from './Stopwatch';
+// import Stopwatch from './Stopwatch';
+import Basic from './Basic';
 
 function App() {
   return (
     <div>
-      <Stopwatch />
+      {/* <Stopwatch /> */}
+      <Basic></Basic>
     </div>
   );
 }

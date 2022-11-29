@@ -16,9 +16,9 @@ export type ComputeFn = () => void;
 export type CleanupFn = () => void;
 
 export class Reaction {
-  private _computeFn: ComputeFn;
+  _computeFn: ComputeFn;
   private _cleanupFn?: CleanupFn | undefined;
-  private _deps?: Array<ReactiveValue>;
+  _deps?: Array<ReactiveValue>;
   private _version: number = getVersion();
   /**
    * A reaction is initialized when it has been run for the first time and it's initial dependencies
@@ -26,7 +26,7 @@ export class Reaction {
    * run inside of an uninitialized Reaction, they add all of their dependencies to the Reaction's
    * dependencies so that the Reaction has full knowledge of the full dependency chain.
    */
-  private _initialized = false;
+  _initialized = false;
   /**
    * A reaction is finalized once it has been fully computed for a second time and has adjusted
    * its locally-tracked dependencies to only include direct dependencies. Since derived values
@@ -34,7 +34,7 @@ export class Reaction {
    * only capturing direct dependencies, which in turn allows finalized Reactions to be much
    * smarter about when they actually re-run.
    */
-  private _finalized = false;
+  _finalized = false;
   isDisposed = false;
 
   constructor(fn: ComputeFn, dispose?: CleanupFn) {
@@ -81,6 +81,7 @@ export class Reaction {
       // TODO: Figure out if it's safe to to lock the dependencies in place or if we need to
       // go back to resetting the deps array on every compute
       if (!this.finalized) {
+        console.log('overwriting deps');
         this._deps = Array.from(currentContext);
       }
 
