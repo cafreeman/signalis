@@ -36,9 +36,9 @@ function createStopwatch() {
   };
 }
 
-function Stopwatch() {
-  const { timer, start, stop } = createStopwatch();
+const { timer, start, stop } = createStopwatch();
 
+function Stopwatch() {
   useEffect(() => {
     start();
 

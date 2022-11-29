@@ -1,120 +1,53 @@
-import { useMemo, useSyncExternalStore, useRef, useState, useEffect } from 'react';
-import type { FunctionComponent } from 'react';
 import { LazyReaction } from '@reactiv/core';
+import { FunctionComponent, useEffect, useRef, useState } from 'react';
 
-// function createEffectStore() {
-//   console.log('createEffectStore');
-//   let version = 0;
-//   let notifyReact: (() => void) | undefined = undefined;
+function useReactive<T>(renderFn: () => T): T {
+  const [, setState] = useState();
+  const forceUpdate = () => {
+    setState([] as any);
+  };
 
-//   const reaction = new LazyReaction(() => {
-//     console.log('REACTION COMPUTE');
-//     version++;
-//     notifyReact && notifyReact();
-//   });
+  const reactionRef = useRef<LazyReaction | null>(null);
 
-//   return {
-//     reaction,
-//     subscribe(onStoreChange: () => void) {
-//       console.log('subscribe');
-//       notifyReact = onStoreChange;
+  if (!reactionRef.current) {
+    reactionRef.current = new LazyReaction(() => {
+      forceUpdate();
+    });
+  }
 
-//       return () => {
-//         version++;
-//         console.log('unsubscribe');
-//         notifyReact = undefined;
-//         reaction.dispose();
-//       };
-//     },
-//     getSnapshot() {
-//       return version;
-//     },
-//   };
-// }
-
-// export function wrapComponent(component: FunctionComponent) {
-//   const wrappedComponent = (props: any) => {
-//     let version = 0;
-//     let notifyReact: (() => void) | undefined = undefined;
-
-//     const reaction = new LazyReaction(() => {
-//       console.log('REACTION COMPUTE');
-//       version++;
-//       notifyReact && notifyReact();
-//     });
-
-//     function subscribe(onStoreChange: () => void) {
-//       console.log('subscribe');
-//       notifyReact = onStoreChange;
-
-//       return () => {
-//         // version++;
-//         console.log('unsubscribe');
-//         notifyReact = undefined;
-//         reaction.dispose();
-//       };
-//     }
-
-//     function getSnapshot() {
-//       return version;
-//     }
-
-//     useSyncExternalStore(subscribe, getSnapshot);
-
-//     reaction.trap();
-
-//     try {
-//       return component(props);
-//     } finally {
-//       reaction.seal();
-//       // console.log(reaction._deps);
-//     }
-//   };
-
-//   return wrappedComponent;
-// }
-
-export function wrapComponent(component: FunctionComponent) {
-  const wrappedComponent = (props: any) => {
-    const [, setState] = useState();
-    const forceUpdate = () => {
-      setState([] as any);
-    };
-
-    const reactionRef = useRef<LazyReaction | null>(null);
-
+  useEffect(() => {
+    if (reactionRef.current) {
+      forceUpdate();
+    }
     if (!reactionRef.current) {
       reactionRef.current = new LazyReaction(() => {
         forceUpdate();
       });
+      forceUpdate();
+      console.log(reactionRef.current._deps);
     }
 
-    useEffect(() => {
-      if (reactionRef.current) {
-        forceUpdate();
-      }
-      if (!reactionRef.current) {
-        reactionRef.current = new LazyReaction(() => {
-          forceUpdate();
-        });
-        forceUpdate();
-        console.log(reactionRef.current._deps);
-      }
+    return () => {
+      reactionRef.current?.dispose();
+      reactionRef.current = null;
+    };
+  }, []);
 
-      return () => {
-        reactionRef.current?.dispose();
-        reactionRef.current = null;
-      };
-    }, []);
+  let rendered!: T;
 
-    let rendered: any;
+  reactionRef.current.trap(() => {
+    rendered = renderFn();
+  });
 
-    reactionRef.current.trap(() => {
-      rendered = component(props);
-    });
+  return rendered;
+}
 
-    return rendered;
+export function wrapComponent(component: FunctionComponent) {
+  const wrappedComponent = (props: any) => {
+    return useReactive(() => component(props));
   };
+
+  wrappedComponent.displayName = component.displayName;
 
   return wrappedComponent;
 }

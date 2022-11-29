@@ -9,7 +9,7 @@ import {
 } from './state';
 
 export class LazyReaction extends Reaction {
-  private sealed = false;
+  // private sealed = false;
 
   constructor(fn: ComputeFn, dispose?: CleanupFn) {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -19,9 +19,6 @@ export class LazyReaction extends Reaction {
   }
 
   trap(trapFn: () => void) {
-    // if (this.sealed) {
-    //   return;
-    // }
     batchStart();
     const prevContext = getCurrentContext();
     const currentContext = setupCurrentContext(this);
@@ -30,13 +27,14 @@ export class LazyReaction extends Reaction {
     try {
       trapFn();
     } finally {
+      this._initialized = true;
       this._deps = Array.from(currentContext);
       console.log('this._deps', this._deps);
       this.registerDependencies();
       setCurrentContext(prevContext);
       setCurrentContext(null);
       setRunningReaction(null);
-      this.sealed = true;
+      // this.sealed = true;
       this._finalized = true;
       batchEnd();
     }

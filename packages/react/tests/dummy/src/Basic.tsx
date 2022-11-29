@@ -1,12 +1,12 @@
-import { createSignal, createDerived } from '@reactiv/core';
 import { wrapComponent } from '../../../src';
+import { useDerived } from '../../../src/useDerived';
+import { useSignal } from '../../../src/useSignal';
 
-const signal = createSignal(0);
-const isOdd = createDerived(() => {
-  return signal.value % 2 !== 0;
-});
 function Basic() {
-  console.log('wat');
+  const signal = useSignal(0);
+  const isOdd = useDerived(() => {
+    return signal.value % 2 !== 0;
+  });
 
   return (
     <div>
