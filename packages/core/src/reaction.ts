@@ -18,7 +18,7 @@ export type CleanupFn = () => void;
 export class Reaction {
   _computeFn: ComputeFn;
   private _cleanupFn?: CleanupFn | undefined;
-  _deps?: Array<ReactiveValue>;
+  private _deps?: Array<ReactiveValue>;
   private _version: number = getVersion();
   /**
    * A reaction is initialized when it has been run for the first time and it's initial dependencies
@@ -26,7 +26,7 @@ export class Reaction {
    * run inside of an uninitialized Reaction, they add all of their dependencies to the Reaction's
    * dependencies so that the Reaction has full knowledge of the full dependency chain.
    */
-  _initialized = false;
+  private _initialized = false;
   /**
    * A reaction is finalized once it has been fully computed for a second time and has adjusted
    * its locally-tracked dependencies to only include direct dependencies. Since derived values
@@ -34,7 +34,7 @@ export class Reaction {
    * only capturing direct dependencies, which in turn allows finalized Reactions to be much
    * smarter about when they actually re-run.
    */
-  _finalized = false;
+  private _finalized = false;
   isDisposed = false;
 
   constructor(fn: ComputeFn, dispose?: CleanupFn) {
@@ -61,6 +61,9 @@ export class Reaction {
   }
 
   trap(trapFn: ComputeFn) {
+    if (this.isDisposed) {
+      return;
+    }
     const prevContext = getCurrentContext();
     const currentContext = setupCurrentContext(this);
 
@@ -80,6 +83,9 @@ export class Reaction {
   }
 
   compute() {
+    if (this.isDisposed) {
+      return;
+    }
     batchStart();
     const prevContext = getCurrentContext();
     const currentContext = setupCurrentContext(this);
