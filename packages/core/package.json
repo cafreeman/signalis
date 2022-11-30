@@ -2,9 +2,9 @@
   "name": "@reactiv/core",
   "version": "0.0.1",
   "description": "",
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "type": "module",
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

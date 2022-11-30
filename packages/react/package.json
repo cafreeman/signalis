@@ -2,13 +2,16 @@
   "name": "@reactiv/react",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "dev": "vitest",
-    "dummy": "vite tests/dummy"
+    "dummy": "vite tests/dummy",
+    "build": "rm -rf ./dist && tsc -p tsconfig.json"
   },
   "keywords": [],
   "author": "Chris Freeman",

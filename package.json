@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "pnpm -r run lint",
     "lint:fix": "pnpm -r lint:fix",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
   },
   "keywords": [],
   "author": "Chris Freeman",
