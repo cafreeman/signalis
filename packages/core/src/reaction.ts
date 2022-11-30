@@ -16,7 +16,7 @@ export type ComputeFn = () => void;
 export type CleanupFn = () => void;
 
 export class Reaction {
-  _computeFn: ComputeFn;
+  private _computeFn: ComputeFn;
   private _cleanupFn?: CleanupFn | undefined;
   private _deps?: Array<ReactiveValue>;
   private _version: number = getVersion();

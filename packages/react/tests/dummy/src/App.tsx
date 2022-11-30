@@ -1,10 +1,12 @@
+import Counter from './Counter';
 import Stopwatch from './Stopwatch';
 // import Basic from './Basic';
 
 function App() {
   return (
     <div>
-      <Stopwatch />
+      <Counter></Counter>
+      {/* <Stopwatch /> */}
       {/* <Basic></Basic> */}
     </div>
   );
