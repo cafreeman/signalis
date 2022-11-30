@@ -16,7 +16,6 @@ function Basic() {
         type="button"
         onClick={() => {
           signal.value++;
-          console.log(signal.value);
         }}
       >
         Click Me

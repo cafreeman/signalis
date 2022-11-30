@@ -24,7 +24,6 @@ function useReactiv<T>(renderFn: () => T): T {
         forceUpdate();
       });
       forceUpdate();
-      console.log(reactionRef.current._deps);
     }
 
     return () => {

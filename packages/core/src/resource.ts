@@ -1,5 +1,4 @@
 import { createEffect } from './effect';
-import { Reaction } from './reaction';
 import { createSignal, Signal } from './signal';
 import { createTag, markDependency, markUpdate, REVISION, Tagged } from './tag';
 import type { ReactiveValue } from './types';

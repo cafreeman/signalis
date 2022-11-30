@@ -45,7 +45,6 @@ class Derived<T> implements Tagged {
       // can tell when to recompute
       if (prevContext && this.prevTags.length > 0) {
         if (!runningReactionIsInitialized()) {
-          console.log('adding derived deps to reaction deps');
           this.prevTags.forEach((tag) => {
             addTagToCurrentContext(tag);
           });

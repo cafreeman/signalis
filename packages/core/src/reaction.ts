@@ -104,7 +104,6 @@ export class Reaction {
       // TODO: Figure out if it's safe to to lock the dependencies in place or if we need to
       // go back to resetting the deps array on every compute
       if (!this.finalized) {
-        console.log('overwriting deps');
         this._deps = Array.from(currentContext);
       }
 

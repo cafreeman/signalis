@@ -21,7 +21,6 @@ function createStopwatch() {
   const start = () => {
     interval = window.setInterval(() => {
       rawTime.value = new Date();
-      console.log(rawTime);
     }, 1000);
   };
 
