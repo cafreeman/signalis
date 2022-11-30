@@ -1,3 +1,4 @@
+import { createEffect } from './effect';
 import { Reaction } from './reaction';
 import { createSignal, Signal } from './signal';
 import { createTag, markDependency, markUpdate, REVISION, Tagged } from './tag';
@@ -58,7 +59,7 @@ export class ResourceWithSignal<ValueType, SourceType> implements Tagged {
     fetcher: FetcherWithSource<SourceType, ValueType>
   ) {
     this.fetcher = fetcher;
-    new Reaction(() => {
+    createEffect(() => {
       const value = source.value;
       if (value === false || value === null || value === undefined) {
         return;

@@ -9,11 +9,15 @@ describe('reaction', () => {
 
     let result!: number;
 
-    const spy = vi.fn(() => {
-      result = foo.value;
+    const spy = vi.fn(function () {
+      this.trap(() => {
+        result = foo.value;
+      });
     });
 
-    new Reaction(spy);
+    const reaction = new Reaction(spy);
+
+    reaction.compute();
 
     expect(result).toEqual(0);
     expect(spy).toHaveBeenCalledOnce();
@@ -32,11 +36,14 @@ describe('reaction', () => {
 
     let result!: boolean;
 
-    const spy = vi.fn(() => {
-      result = isOdd.value;
+    const spy = vi.fn(function () {
+      this.trap(() => {
+        result = isOdd.value;
+      });
     });
 
-    new Reaction(spy);
+    const reaction = new Reaction(spy);
+    reaction.compute();
 
     expect(result).toBe(false);
     expect(spy).toHaveBeenCalledOnce();
@@ -58,11 +65,14 @@ describe('reaction', () => {
       return foo.value % 2 !== 0;
     });
 
-    const effectSpy = vi.fn(() => {
-      isOdd.value;
+    const effectSpy = vi.fn(function () {
+      this.trap(() => {
+        isOdd.value;
+      });
     });
 
-    new Reaction(effectSpy);
+    const reaction = new Reaction(effectSpy);
+    reaction.compute();
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
@@ -93,11 +103,14 @@ describe('reaction', () => {
 
     let effectValue = '';
 
-    const effectSpy = vi.fn(() => {
-      effectValue = `Combining ${firstNameUppercase.value} and ${lastNameUppercase.value} to create ${fullName.value}`;
+    const effectSpy = vi.fn(function () {
+      this.trap(() => {
+        effectValue = `Combining ${firstNameUppercase.value} and ${lastNameUppercase.value} to create ${fullName.value}`;
+      });
     });
 
-    new Reaction(effectSpy);
+    const reaction = new Reaction(effectSpy);
+    reaction.compute();
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
@@ -122,11 +135,14 @@ describe('reaction', () => {
 
     let effectValue = '';
 
-    const effectSpy = vi.fn(() => {
-      effectValue = uppercaseBar.value;
+    const effectSpy = vi.fn(function () {
+      this.trap(() => {
+        effectValue = uppercaseBar.value;
+      });
     });
 
-    new Reaction(effectSpy);
+    const reaction = new Reaction(effectSpy);
+    reaction.compute();
 
     expect(effectSpy).toHaveBeenCalledOnce();
 
@@ -148,11 +164,14 @@ describe('reaction', () => {
   test('can dispose', () => {
     const foo = createSignal(0);
 
-    const effectSpy = vi.fn(() => {
-      foo.value;
+    const effectSpy = vi.fn(function () {
+      this.trap(() => {
+        foo.value;
+      });
     });
 
     const reaction = new Reaction(effectSpy);
+    reaction.compute();
 
     foo.value++;
 
@@ -170,11 +189,14 @@ describe('reaction', () => {
 
     let didCleanup = false;
 
-    const effectSpy = vi.fn(() => {
-      foo.value;
+    const effectSpy = vi.fn(function () {
+      this.trap(() => {
+        foo.value;
+      });
     });
 
     const reaction = new Reaction(effectSpy, () => (didCleanup = true));
+    reaction.compute();
 
     foo.value++;
 
@@ -193,9 +215,13 @@ describe('reaction', () => {
     const foo = createSignal(0);
 
     const effectWrapper = () => {
-      new Reaction(() => {
-        foo.value++;
+      const reaction = new Reaction(function () {
+        this.trap(() => {
+          foo.value++;
+        });
       });
+
+      reaction.compute();
 
       foo.value++;
     };
@@ -203,5 +229,56 @@ describe('reaction', () => {
     expect(effectWrapper).toThrowError(
       'Cannot update a tag that has been used during a computation.'
     );
+  });
+
+  describe('using trap for lazy reactions', () => {
+    test('it works with signals', () => {
+      let version = 0;
+      const fnSpy = vi.fn();
+      const signal = createSignal(0);
+
+      const reaction = new Reaction(() => {
+        version++;
+        fnSpy();
+      });
+
+      reaction.trap(() => {
+        signal.value;
+      });
+
+      expect(fnSpy).not.toHaveBeenCalled();
+      expect(version).toEqual(0);
+
+      signal.value = 1;
+
+      expect(fnSpy).toHaveBeenCalledOnce();
+      expect(version).toEqual(1);
+    });
+
+    test('it works with derived', () => {
+      let version = 0;
+      const fnSpy = vi.fn();
+      const signal = createSignal(0);
+      const isOdd = createDerived(() => {
+        return signal.value % 2 !== 0;
+      });
+
+      const reaction = new Reaction(() => {
+        version++;
+        fnSpy();
+      });
+
+      reaction.trap(() => {
+        isOdd.value;
+      });
+
+      expect(fnSpy).not.toHaveBeenCalled();
+      expect(version).toEqual(0);
+
+      signal.value = 1;
+
+      expect(fnSpy).toHaveBeenCalledOnce();
+      expect(version).toEqual(1);
+    });
   });
 });

@@ -1,16 +1,16 @@
-import { LazyReaction } from '@reactiv/core';
+import { Reaction } from '@reactiv/core';
 import { FunctionComponent, useEffect, useRef, useState } from 'react';
 
-function useReactive<T>(renderFn: () => T): T {
+function useReactiv<T>(renderFn: () => T): T {
   const [, setState] = useState();
   const forceUpdate = () => {
     setState([] as any);
   };
 
-  const reactionRef = useRef<LazyReaction | null>(null);
+  const reactionRef = useRef<Reaction | null>(null);
 
   if (!reactionRef.current) {
-    reactionRef.current = new LazyReaction(() => {
+    reactionRef.current = new Reaction(() => {
       forceUpdate();
     });
   }
@@ -20,7 +20,7 @@ function useReactive<T>(renderFn: () => T): T {
       forceUpdate();
     }
     if (!reactionRef.current) {
-      reactionRef.current = new LazyReaction(() => {
+      reactionRef.current = new Reaction(() => {
         forceUpdate();
       });
       forceUpdate();
@@ -44,10 +44,14 @@ function useReactive<T>(renderFn: () => T): T {
 
 export function wrapComponent(component: FunctionComponent) {
   const wrappedComponent = (props: any) => {
-    return useReactive(() => component(props));
+    return useReactiv(() => component(props));
   };
 
-  wrappedComponent.displayName = component.displayName;
+  if (component.displayName) {
+    wrappedComponent.displayName = component.displayName;
+  } else if (component.name) {
+    wrappedComponent.displayName = component.name;
+  }
 
   return wrappedComponent;
 }

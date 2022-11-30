@@ -40,8 +40,6 @@ export class Reaction {
   constructor(fn: ComputeFn, dispose?: CleanupFn) {
     this._computeFn = fn;
     this._cleanupFn = dispose;
-    this.compute();
-    this._initialized = true;
   }
 
   get initialized() {
@@ -59,6 +57,25 @@ export class Reaction {
   _computeDeps() {
     if (this._deps && this.finalized) {
       this._deps.forEach((dep) => dep.value);
+    }
+  }
+
+  trap(trapFn: ComputeFn) {
+    const prevContext = getCurrentContext();
+    const currentContext = setupCurrentContext(this);
+
+    try {
+      trapFn();
+    } finally {
+      // If this is the first run of the reaction, we know we're going to capture *all* dependencies
+      // rather than only the direct dependencies, so we want to make sure we register dependencies
+      // when that happens
+      this._deps = Array.from(currentContext);
+      if (!this.initialized) {
+        this.registerDependencies();
+      }
+
+      setCurrentContext(prevContext);
     }
   }
 
@@ -85,18 +102,15 @@ export class Reaction {
         this._deps = Array.from(currentContext);
       }
 
-      // If this is the first run of the reaction, we know we're going to capture *all* dependencies
-      // rather than only the direct dependencies, so we want to make sure we register dependencies
-      // when that happens
-      if (!this.initialized) {
-        this.registerDependencies();
-      }
-
       setCurrentContext(prevContext);
       setRunningReaction(null);
 
       if (this.initialized && !this.finalized) {
         this._finalized = true;
+      }
+
+      if (!this.initialized && !this.finalized) {
+        this._initialized = true;
       }
 
       if (this._deps) {
