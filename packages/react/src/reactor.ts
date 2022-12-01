@@ -1,5 +1,5 @@
 import { Reaction } from '@reactiv/core';
-import { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { type FunctionComponent, useEffect, useRef, useState } from 'react';
 
 function useReactiv<T>(renderFn: () => T): T {
   const [, setState] = useState();
@@ -25,7 +25,6 @@ function useReactiv<T>(renderFn: () => T): T {
       });
       forceUpdate();
     }
-
     return () => {
       reactionRef.current?.dispose();
       reactionRef.current = null;
@@ -41,8 +40,8 @@ function useReactiv<T>(renderFn: () => T): T {
   return rendered;
 }
 
-export function reactor(component: FunctionComponent) {
-  const wrappedComponent = (props: any) => {
+export function reactor<T extends {}>(component: FunctionComponent<T>) {
+  const wrappedComponent = (props: T) => {
     return useReactiv(() => component(props));
   };
 

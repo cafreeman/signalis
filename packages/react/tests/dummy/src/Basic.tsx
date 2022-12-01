@@ -1,4 +1,4 @@
-import { wrapComponent } from '../../../src';
+import { reactor } from '../../../src';
 import { useDerived } from '../../../src/useDerived';
 import { useSignal } from '../../../src/useSignal';
 
@@ -24,4 +24,4 @@ function Basic() {
   );
 }
 
-export default wrapComponent(Basic);
+export default reactor(Basic);

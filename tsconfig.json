@@ -4,6 +4,14 @@
     "noPropertyAccessFromIndexSignature": false,
     "sourceMap": true,
     "target": "ESNext",
-    "module": "ESNext"
+    "module": "ESNext",
+    "paths": {
+      "@reactiv/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@reactiv/react": [
+        "./packages/react/src/index.ts"
+      ]
+    }
   }
 }

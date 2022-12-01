@@ -8,5 +8,5 @@
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"]
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
 }

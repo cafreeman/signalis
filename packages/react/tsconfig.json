@@ -3,10 +3,11 @@
   "compilerOptions": {
     "declaration": true,
     "outDir": "dist",
-    "jsx": "react-jsx",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",
-    "target": "ESNext"
+    "target": "ESNext",
+    "jsx": "react-jsx"
   },
-  "include": ["./src/**/*.ts"]
+  "include": ["./src/**/*.ts"],
+  "exclude": ["dist/*"],
 }

@@ -1,6 +1,6 @@
 import Counter from './Counter';
-import Stopwatch from './Stopwatch';
-// import Basic from './Basic';
+// import Stopwatch from './Stopwatch';
+import Basic from './Basic';
 
 function App() {
   return (
