@@ -1,12 +1,8 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "declaration": true,
-    "outDir": "dist",
-    "sourceMap": true,
-    "module": "ESNext",
-    "target": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"]
+    "noEmit": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
   },
   "include": ["src/**/*.ts"],
 }

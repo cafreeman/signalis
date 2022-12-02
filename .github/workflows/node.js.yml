@@ -50,6 +50,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Build
+        run: pnpm build
+
       - name: Run tests
         run: pnpm test
 
@@ -92,6 +95,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Build
+        run: pnpm build
 
       - name: Install TypeScript ${{ matrix.ts-version }}
         run: pnpm add --save-dev typescript@${{ matrix.ts-version }} -w

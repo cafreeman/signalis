@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { reactor, createDerived, createSignal } from '../../../src';
+import { reactor, createDerived, createSignal } from '@reactiv/react';
 
 function createCounter() {
   const count = createSignal(0);

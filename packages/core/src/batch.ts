@@ -1,4 +1,4 @@
-import { batchEnd, batchStart } from './state';
+import { batchEnd, batchStart } from './state.js';
 
 export function batch(cb: () => void) {
   batchStart();

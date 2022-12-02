@@ -3,20 +3,24 @@
   "version": "0.0.1",
   "description": "",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/reactiv-core.umd.cjs",
+  "module": "./dist/reactiv-core.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/reactiv-core.js",
+      "require": "./dist/reactiv-core.umd.cjs"
     }
   },
   "scripts": {
+    "prepublish": "rimraf dist && pnpm run build && pnpm run build:types",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "dev": "vitest",
-    "build": "rm -rf ./dist && tsc -p tsconfig.json"
+    "build": "vite build",
+    "build:types": "tsc -p tsconfig.build.json"
   },
   "keywords": [],
   "author": "Chris Freeman",

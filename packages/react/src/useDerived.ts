@@ -1,8 +1,8 @@
-import { createDerived } from '@reactiv/core';
+import { createDerived, type Derived } from '@reactiv/core';
 import { useCallback, useMemo } from 'react';
-import { EMPTY } from './empty';
+import { EMPTY } from './empty.js';
 
-export function useDerived<T>(fn: () => T) {
+export function useDerived<T>(fn: () => T): Derived<T> {
   const factory = useCallback(() => createDerived(fn), EMPTY);
 
   return useMemo(factory, EMPTY);

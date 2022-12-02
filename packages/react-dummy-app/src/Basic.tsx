@@ -1,6 +1,4 @@
-import { reactor } from '../../../src';
-import { useDerived } from '../../../src/useDerived';
-import { useSignal } from '../../../src/useSignal';
+import { reactor, useDerived, useSignal } from '@reactiv/react';
 
 function Basic() {
   const signal = useSignal(0);

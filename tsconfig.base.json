@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/node-lts-strictest",
+  "compilerOptions": {
+    "noPropertyAccessFromIndexSignature": false,
+    "sourceMap": true,
+    "target": "ESNext",
+    "module": "Node16",
+    "moduleResolution": "Node16"
+  }
+}

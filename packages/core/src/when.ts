@@ -1,4 +1,4 @@
-import { Reaction } from './reaction';
+import { Reaction } from './reaction.js';
 
 interface WhenOptions {
   final?: boolean;

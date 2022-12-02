@@ -8,9 +8,9 @@ import {
   setCurrentContext,
   setRunningReaction,
   setupCurrentContext,
-} from './state';
-import { getMax } from './tag';
-import type { ReactiveValue } from './types';
+} from './state.js';
+import { getMax } from './tag.js';
+import type { ReactiveValue } from './types.js';
 
 export type ComputeFn = () => void;
 export type CleanupFn = () => void;

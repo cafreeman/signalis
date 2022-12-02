@@ -5,8 +5,8 @@ import {
   incrementVersion,
   onTagDirtied,
   scheduleReactionsForReactiveValue,
-} from './state';
-import type { ReactiveValue } from './types';
+} from './state.js';
+import type { ReactiveValue } from './types.js';
 
 // Type-only, zero-cost way of making type-safe "new types".
 declare const DataTag: unique symbol;

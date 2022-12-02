@@ -1,6 +1,6 @@
 import { createSignal } from '@reactiv/core';
 import { useMemo } from 'react';
-import { EMPTY } from './empty';
+import { EMPTY } from './empty.js';
 
 export function useSignal<T>(value: T) {
   return useMemo(() => createSignal(value), EMPTY);

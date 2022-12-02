@@ -1,7 +1,7 @@
-import type { Derived } from './derived';
-import type { Reaction } from './reaction';
-import type { Resource, ResourceWithSignal } from './resource';
-import type { Signal } from './signal';
+import type { Derived } from './derived.js';
+import type { Reaction } from './reaction.js';
+import type { Resource, ResourceWithSignal } from './resource.js';
+import type { Signal } from './signal.js';
 
 export type ReactiveValue<T = unknown> =
   | Signal<T>

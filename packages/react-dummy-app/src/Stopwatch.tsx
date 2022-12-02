@@ -1,6 +1,5 @@
-import { createDerived, createSignal } from '@reactiv/core';
+import { createDerived, createSignal, reactor } from '@reactiv/react';
 import { useEffect } from 'react';
-import { reactor } from '../../../src';
 
 function createStopwatch() {
   const rawTime = createSignal(new Date());
