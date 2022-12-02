@@ -1,12 +1,17 @@
 {
-  "name": "reactiv",
+  "name": "signalis",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
+  "private": true,
   "scripts": {
+    "clean": "pnpm -r exec rimraf dist",
     "lint": "pnpm -r run lint",
     "lint:fix": "pnpm -r lint:fix",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "build": "pnpm build:ts && pnpm build:types",
+    "build:ts": "pnpm --filter core --filter react run build",
+    "build:types": "pnpm --filter core --filter react run build:types"
   },
   "keywords": [],
   "author": "Chris Freeman",
@@ -15,10 +20,13 @@
     "@tsconfig/node-lts-strictest": "^18.12.1",
     "@typescript-eslint/eslint-plugin": "^5.43.0",
     "@typescript-eslint/parser": "^5.43.0",
+    "@vitejs/plugin-react": "^2.2.0",
     "eslint": "^8.28.0",
     "eslint-config-prettier": "^8.5.0",
     "prettier": "^2.7.1",
+    "rimraf": "^3.0.2",
     "typescript": "^4.9.3",
+    "vite": "^3.2.4",
     "vitest": "^0.25.2"
   }
 }

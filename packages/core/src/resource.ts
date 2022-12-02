@@ -1,7 +1,7 @@
-import { Reaction } from './reaction';
-import { createSignal, Signal } from './signal';
-import { createTag, markDependency, markUpdate, REVISION, Tagged } from './tag';
-import type { ReactiveValue } from './types';
+import { createEffect } from './effect.js';
+import { createSignal, Signal } from './signal.js';
+import { createTag, markDependency, markUpdate, REVISION, Tagged } from './tag.js';
+import type { ReactiveValue } from './types.js';
 
 type Fetcher<ValueType> = (source: true) => Promise<ValueType>;
 type FetcherWithSource<SourceType, ValueType> = (source: SourceType) => Promise<ValueType>;
@@ -58,7 +58,7 @@ export class ResourceWithSignal<ValueType, SourceType> implements Tagged {
     fetcher: FetcherWithSource<SourceType, ValueType>
   ) {
     this.fetcher = fetcher;
-    new Reaction(() => {
+    createEffect(() => {
       const value = source.value;
       if (value === false || value === null || value === undefined) {
         return;

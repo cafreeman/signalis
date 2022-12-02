@@ -1,4 +1,4 @@
-import { createSignal, type Signal } from '../signal';
+import { createSignal, type Signal } from '../signal.js';
 
 export class TrackedSet<T = unknown> implements Set<T> {
   private collection = createSignal(0);

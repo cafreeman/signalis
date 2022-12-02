@@ -4,5 +4,5 @@
     "noEmit": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts"]
 }

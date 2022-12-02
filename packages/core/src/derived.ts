@@ -5,7 +5,7 @@ import {
   runningReactionIsInitialized,
   setCurrentContext,
   setupCurrentContext,
-} from './state';
+} from './state.js';
 import {
   createTag,
   getMax,
@@ -14,7 +14,7 @@ import {
   REVISION,
   Tagged,
   TaggedValue,
-} from './tag';
+} from './tag.js';
 
 class Derived<T> implements Tagged {
   private computeFn: () => T;

@@ -8,9 +8,9 @@ import {
   setCurrentContext,
   setRunningReaction,
   setupCurrentContext,
-} from './state';
-import { getMax } from './tag';
-import type { ReactiveValue } from './types';
+} from './state.js';
+import { getMax } from './tag.js';
+import type { ReactiveValue } from './types.js';
 
 export type ComputeFn = () => void;
 export type CleanupFn = () => void;
@@ -40,8 +40,6 @@ export class Reaction {
   constructor(fn: ComputeFn, dispose?: CleanupFn) {
     this._computeFn = fn;
     this._cleanupFn = dispose;
-    this.compute();
-    this._initialized = true;
   }
 
   get initialized() {
@@ -62,7 +60,32 @@ export class Reaction {
     }
   }
 
+  trap(trapFn: ComputeFn) {
+    if (this.isDisposed) {
+      return;
+    }
+    const prevContext = getCurrentContext();
+    const currentContext = setupCurrentContext(this);
+
+    try {
+      trapFn();
+    } finally {
+      // If this is the first run of the reaction, we know we're going to capture *all* dependencies
+      // rather than only the direct dependencies, so we want to make sure we register dependencies
+      // when that happens
+      this._deps = Array.from(currentContext);
+      if (!this.initialized) {
+        this.registerDependencies();
+      }
+
+      setCurrentContext(prevContext);
+    }
+  }
+
   compute() {
+    if (this.isDisposed) {
+      return;
+    }
     batchStart();
     const prevContext = getCurrentContext();
     const currentContext = setupCurrentContext(this);
@@ -84,18 +107,15 @@ export class Reaction {
         this._deps = Array.from(currentContext);
       }
 
-      // If this is the first run of the reaction, we know we're going to capture *all* dependencies
-      // rather than only the direct dependencies, so we want to make sure we register dependencies
-      // when that happens
-      if (!this.initialized) {
-        this.registerDependencies();
-      }
-
       setCurrentContext(prevContext);
       setRunningReaction(null);
 
       if (this.initialized && !this.finalized) {
         this._finalized = true;
+      }
+
+      if (!this.initialized && !this.finalized) {
+        this._initialized = true;
       }
 
       if (this._deps) {

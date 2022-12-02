@@ -6,7 +6,7 @@ describe('Effect', () => {
   test('it works', () => {
     const foo = createSignal(0);
 
-    const effectSpy = vi.fn(() => {
+    const effectSpy = vi.fn(function () {
       foo.value;
     });
 

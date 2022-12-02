@@ -1,6 +1,6 @@
-import type { Reaction } from './reaction';
-import type { Tag, TaggedValue } from './tag';
-import type { DerivedFunction, ReactiveValue } from './types';
+import type { Reaction } from './reaction.js';
+import type { Tag, TaggedValue } from './tag.js';
+import type { DerivedFunction, ReactiveValue } from './types.js';
 
 export type Context = Set<TaggedValue>;
 export type ReactionRegistry = WeakMap<ReactiveValue, Set<Reaction>>;
