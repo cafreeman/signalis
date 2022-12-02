@@ -1,4 +1,4 @@
 export { reactor } from './reactor.js';
 export { useDerived } from './useDerived.js';
 export { useSignal } from './useSignal.js';
-export * from '@reactiv/core';
+export * from '@signalis/core';

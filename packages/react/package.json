@@ -1,16 +1,19 @@
 {
-  "name": "@reactiv/react",
+  "name": "@signalis/react",
   "version": "0.0.1",
   "description": "",
   "type": "module",
-  "main": "./dist/reactiv-react.umd.cjs",
-  "module": "./dist/reactiv-react.js",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/signalis-react.umd.cjs",
+  "module": "./dist/signalis-react.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/reactiv-react.js",
-      "require": "./dist/reactiv-react.umd.cjs"
+      "import": "./dist/signalis-react.js",
+      "require": "./dist/signalis-react.umd.cjs"
     }
   },
   "scripts": {
@@ -26,7 +29,7 @@
   "author": "Chris Freeman",
   "license": "MIT",
   "dependencies": {
-    "@reactiv/core": "workspace:*"
+    "@signalis/core": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/react": "^13.4.0",

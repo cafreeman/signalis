@@ -40,7 +40,7 @@ importers:
 
   packages/react:
     specifiers:
-      '@reactiv/core': workspace:*
+      '@signalis/core': workspace:*
       '@testing-library/react': ^13.4.0
       '@types/react': ^18.0.25
       '@types/react-dom': ^18.0.9
@@ -48,7 +48,7 @@ importers:
       react: ^18.2.0
       react-dom: ^18.2.0
     dependencies:
-      '@reactiv/core': link:../core
+      '@signalis/core': link:../core
     devDependencies:
       '@testing-library/react': 13.4.0_biqbaboplfbrettd7655fr4n2y
       '@types/react': 18.0.25
@@ -59,7 +59,7 @@ importers:
 
   packages/react-dummy-app:
     specifiers:
-      '@reactiv/react': workspace:*
+      '@signalis/react': workspace:*
       '@types/react': ^18.0.24
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^2.2.0
@@ -68,7 +68,7 @@ importers:
       typescript: ^4.6.4
       vite: ^3.2.3
     dependencies:
-      '@reactiv/react': link:../react
+      '@signalis/react': link:../react
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
     devDependencies:

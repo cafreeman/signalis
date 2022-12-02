@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { reactor, createDerived, createSignal } from '@reactiv/react';
+import { reactor, createDerived, createSignal } from '@signalis/react';
 
 function createCounter() {
   const count = createSignal(0);

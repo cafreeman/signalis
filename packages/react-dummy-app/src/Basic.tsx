@@ -1,4 +1,4 @@
-import { reactor, useDerived, useSignal } from '@reactiv/react';
+import { reactor, useDerived, useSignal } from '@signalis/react';
 
 function Basic() {
   const signal = useSignal(0);

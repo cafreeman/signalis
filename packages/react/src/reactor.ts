@@ -1,7 +1,7 @@
-import { Reaction } from '@reactiv/core';
+import { Reaction } from '@signalis/core';
 import { type FunctionComponent, useEffect, useRef, useState } from 'react';
 
-function useReactiv<T>(renderFn: () => T): T {
+function useSignalis<T>(renderFn: () => T): T {
   const [, setState] = useState();
   const forceUpdate = () => {
     setState([] as any);
@@ -42,7 +42,7 @@ function useReactiv<T>(renderFn: () => T): T {
 
 export function reactor<T extends {}>(component: FunctionComponent<T>) {
   const wrappedComponent = (props: T) => {
-    return useReactiv(() => component(props));
+    return useSignalis(() => component(props));
   };
 
   if (component.displayName) {

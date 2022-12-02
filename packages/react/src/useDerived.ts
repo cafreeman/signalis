@@ -1,4 +1,4 @@
-import { createDerived, type Derived } from '@reactiv/core';
+import { createDerived, type Derived } from '@signalis/core';
 import { useCallback, useMemo } from 'react';
 import { EMPTY } from './empty.js';
 

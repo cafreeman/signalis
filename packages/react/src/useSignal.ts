@@ -1,4 +1,4 @@
-import { createSignal } from '@reactiv/core';
+import { createSignal } from '@signalis/core';
 import { useMemo } from 'react';
 import { EMPTY } from './empty.js';
 

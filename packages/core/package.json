@@ -1,16 +1,19 @@
 {
-  "name": "@reactiv/core",
+  "name": "@signalis/core",
   "version": "0.0.1",
   "description": "",
   "type": "module",
-  "main": "./dist/reactiv-core.umd.cjs",
-  "module": "./dist/reactiv-core.js",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/signalis-core.umd.cjs",
+  "module": "./dist/signalis-core.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/reactiv-core.js",
-      "require": "./dist/reactiv-core.umd.cjs"
+      "import": "./dist/signalis-core.js",
+      "require": "./dist/signalis-core.umd.cjs"
     }
   },
   "scripts": {
