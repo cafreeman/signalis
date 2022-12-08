@@ -1,6 +1,5 @@
 import { expect, describe, test, vi } from 'vitest';
-import { createSignal, Peek } from '../src/signal';
-import { createEffect } from '../src/effect';
+import { createSignal, createEffect } from '../src/index.js';
 import isEqual from 'lodash/isEqual';
 
 describe('Signal', () => {
@@ -42,20 +41,6 @@ describe('Signal', () => {
     createEffect(spy);
 
     foo.value = { a: 1 };
-
-    expect(spy).toHaveBeenCalledTimes(1);
-  });
-
-  test('peek does not trigger updates', () => {
-    const foo = createSignal('foo');
-
-    const spy = vi.fn(() => {
-      foo[Peek]();
-    });
-
-    createEffect(spy);
-
-    foo.value = 'bar';
 
     expect(spy).toHaveBeenCalledTimes(1);
   });
