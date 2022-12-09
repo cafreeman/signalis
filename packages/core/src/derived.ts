@@ -1,21 +1,21 @@
 import type { Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
 import {
-  type STATUS,
-  DIRTY,
-  markDependency,
-  STALE,
+  batchCount,
+  checkPendingUpdate,
   CLEAN,
-  markUpdate,
-  setupCurrentContext,
-  setRunningComputation,
+  DIRTY,
   getCurrentContext,
   getRunningComputation,
+  markDependency,
+  markUpdate,
   setCurrentContext,
-  checkPendingUpdate,
-  batchCount,
+  setRunningComputation,
+  setupCurrentContext,
+  STALE,
+  type STATUS,
 } from './state.js';
-import { validate } from './utils.js';
+import { unlinkObservers, validate } from './utils.js';
 
 // Derived
 export class Derived<T> {
@@ -28,7 +28,7 @@ export class Derived<T> {
   logger: (...data: Array<unknown>) => void;
 
   observers: Set<Derived<unknown> | Reaction> | null = null;
-  sources: Set<Signal<unknown> | Derived<unknown>> | null = null;
+  sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
 
   constructor(fn: () => T, label?: string) {
     this.computeFn = fn;
@@ -89,9 +89,11 @@ export class Derived<T> {
     const context = setupCurrentContext(this);
     setRunningComputation(this);
 
+    unlinkObservers(this);
+
     const result = this.computeFn();
 
-    this.sources = context;
+    this.sources = Array.from(context);
 
     setCurrentContext(prevContext);
     setRunningComputation(prevComputation);
@@ -111,4 +113,8 @@ function createLogger(label?: string): (...data: Array<unknown>) => void {
   return (...data: Array<unknown>) => {
     console.log(label ? `[${label}]` : '', ...data);
   };
+}
+
+export function isDerived(v: unknown): v is Derived<unknown> {
+  return v instanceof Derived;
 }

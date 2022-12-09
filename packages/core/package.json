@@ -17,12 +17,13 @@
     }
   },
   "scripts": {
-    "prepublish": "rimraf dist && pnpm run build && pnpm run build:types",
+    "prepublish": "pnpm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "dev": "vitest",
-    "build": "vite build",
+    "build": "rimraf dist && pnpm run build:js && pnpm run build:types",
+    "build:js": "vite build",
     "build:types": "tsc -p tsconfig.build.json"
   },
   "keywords": [],

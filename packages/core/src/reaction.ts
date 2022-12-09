@@ -11,12 +11,11 @@ import {
   setCurrentContext,
   setRunningComputation,
 } from './state.js';
-import { validate } from './utils.js';
+import { unlinkObservers, validate } from './utils.js';
 
 export class Reaction {
   readonly type = 'reaction';
-
-  sources: Set<Signal<unknown> | Derived<unknown>> | null = null;
+  sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
   observers = null;
   fn: () => void;
   cleanupFn?: () => void;
@@ -41,10 +40,12 @@ export class Reaction {
     const context = setupCurrentContext(this);
     setRunningComputation(this);
 
+    unlinkObservers(this);
+
     try {
       trapFn();
     } finally {
-      this.sources = context;
+      this.sources = Array.from(context);
       setCurrentContext(prevContext);
       setRunningComputation(prevComputation);
     }

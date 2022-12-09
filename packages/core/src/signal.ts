@@ -63,3 +63,7 @@ export function createSignal<T extends {}>(
     return new _Signal(value, isEqual);
   }
 }
+
+export function isSignal(v: unknown): v is Signal<unknown> {
+  return v instanceof _Signal;
+}

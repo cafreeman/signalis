@@ -1,8 +1,8 @@
-import { describe, expect, onTestFailed, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
+import { batch } from '../src/batch';
 import { createDerived } from '../src/derived';
 import { createEffect } from '../src/effect';
 import { createSignal } from '../src/signal';
-import { batch } from '../src/batch';
 
 describe('batch', () => {
   test('batching with derived', () => {
