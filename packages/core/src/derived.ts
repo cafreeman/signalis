@@ -40,7 +40,7 @@ export class Derived<T> {
     return this.lastValue as T;
   }
 
-  validate() {
+  validate(): void {
     if (this.sources) {
       if (this.status === STALE) {
         // if we're stale, we know that we *might* need to recompute, so we call `validate` on
@@ -81,7 +81,7 @@ export class Derived<T> {
     this.status = CLEAN;
   }
 
-  compute() {
+  compute(): void {
     const prevContext = getCurrentContext();
     const prevComputation = getRunningComputation();
     const context = setupCurrentContext(this);
@@ -105,7 +105,7 @@ export function createDerived<T>(fn: () => T, label?: string): Derived<T> {
   return new Derived(fn, label);
 }
 
-function createLogger(label?: string) {
+function createLogger(label?: string): (...data: Array<unknown>) => void {
   return (...data: Array<unknown>) => {
     console.log(label ? `[${label}]` : '', ...data);
   };

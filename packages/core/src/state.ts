@@ -43,27 +43,27 @@ export function setupCurrentContext(k: DerivedFunction): Context {
   return context;
 }
 
-export function getCurrentContext() {
+export function getCurrentContext(): Context | null {
   return STATE.currentContext;
 }
 
-export function setCurrentContext(context: Context | null) {
+export function setCurrentContext(context: Context | null): void {
   STATE.currentContext = context;
 }
 
-export function getRunningComputation() {
+export function getRunningComputation(): Derived<unknown> | Reaction | null {
   return STATE.runningComputation;
 }
 
-export function setRunningComputation(computation: Derived<unknown> | Reaction | null) {
+export function setRunningComputation(computation: Derived<unknown> | Reaction | null): void {
   STATE.runningComputation = computation;
 }
 
-export function batchStart() {
+export function batchStart(): void {
   STATE.batchCount++;
 }
 
-export function batchEnd() {
+export function batchEnd(): void {
   STATE.batchCount--;
 
   if (STATE.batchCount === 0) {
@@ -72,11 +72,11 @@ export function batchEnd() {
   }
 }
 
-export function batchCount() {
+export function batchCount(): number {
   return STATE.batchCount;
 }
 
-export function markDependency(v: Signal<unknown> | Derived<unknown>) {
+export function markDependency(v: Signal<unknown> | Derived<unknown>): void {
   if (STATE.currentContext) {
     STATE.currentContext.add(v);
   }
@@ -90,7 +90,10 @@ export function markDependency(v: Signal<unknown> | Derived<unknown>) {
   }
 }
 
-export function markUpdate(v: Signal<unknown> | Derived<unknown> | Reaction, state: NOTCLEAN) {
+export function markUpdate(
+  v: Signal<unknown> | Derived<unknown> | Reaction,
+  state: NOTCLEAN
+): void {
   function doMarkUpdate(
     innerV: Signal<unknown> | Derived<unknown> | Reaction,
     innerState: NOTCLEAN
@@ -125,20 +128,20 @@ export function markUpdate(v: Signal<unknown> | Derived<unknown> | Reaction, sta
   }
 }
 
-function scheduleReaction(reaction: Reaction) {
+function scheduleReaction(reaction: Reaction): void {
   if (!STATE.runningComputation) {
     STATE.scheduledReactions.push(reaction);
   }
 }
 
-export function runReactions() {
+export function runReactions(): void {
   while (STATE.scheduledReactions.length > 0) {
     const reaction = STATE.scheduledReactions.pop();
     reaction?.validate();
   }
 }
 
-function runPendingUpdates() {
+function runPendingUpdates(): void {
   for (const update of STATE.pendingUpdates.values()) {
     update();
   }

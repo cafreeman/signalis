@@ -4,7 +4,7 @@ interface WhenOptions {
   final?: boolean;
 }
 
-export function when(predicate: () => boolean, fn: () => void, options?: WhenOptions) {
+export function when(predicate: () => boolean, fn: () => void, options?: WhenOptions): () => void {
   let reaction: Reaction;
 
   if (options && options.final) {
