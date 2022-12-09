@@ -51,18 +51,15 @@ export class _Signal<T> {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Signal<T> extends Omit<_Signal<T>, '_isEqual'> {}
 
-export function createSignal(): Signal<unknown>;
-export function createSignal<T>(value: T, isEqual?: Equality<T> | false): Signal<T>;
+export function createSignal(value?: null | undefined): Signal<unknown>;
+export function createSignal<T extends {}>(value: T, isEqual?: Equality<T> | false): Signal<T>;
 export function createSignal<T extends {}>(
-  value?: T,
+  value?: T | null | undefined,
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<unknown> {
-  if (arguments.length === 0) {
-    return new _Signal(null as unknown, neverEqual);
+  if (arguments.length === 0 || value == null) {
+    return new _Signal(null, neverEqual);
   } else {
-    // SAFETY: TS doesn't understand that the `arguments` check means there is
-    // always *something* passed as `value` here, and therefore that it is safe
-    // to treat `value` as indicating what `T` must be.
-    return new _Signal(value as T, isEqual);
+    return new _Signal(value, isEqual);
   }
 }

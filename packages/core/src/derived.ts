@@ -19,6 +19,8 @@ import { validate } from './utils.js';
 
 // Derived
 export class Derived<T> {
+  readonly type = 'derived';
+
   computeFn: () => T;
   lastValue?: T;
   status: STATUS = DIRTY;
