@@ -14,6 +14,8 @@ import {
 import { validate } from './utils.js';
 
 export class Reaction {
+  readonly type = 'reaction';
+
   sources: Set<Signal<unknown> | Derived<unknown>> | null = null;
   observers = null;
   fn: () => void;
@@ -98,6 +100,6 @@ export class Reaction {
   }
 }
 
-export function isReaction(v: unknown): v is Reaction {
-  return v instanceof Reaction;
+export function isReaction(v: Derived<unknown> | Reaction): v is Reaction {
+  return v.type === 'reaction';
 }
