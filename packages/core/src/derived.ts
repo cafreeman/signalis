@@ -1,6 +1,18 @@
 import type { Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
-import { type STATUS, DIRTY, markDependency, STALE, CLEAN, STATE, markUpdate } from './state.js';
+import {
+  type STATUS,
+  DIRTY,
+  markDependency,
+  STALE,
+  CLEAN,
+  markUpdate,
+  setupCurrentContext,
+  setRunningComputation,
+  getCurrentContext,
+  getRunningComputation,
+  setCurrentContext,
+} from './state.js';
 import { validate } from './utils.js';
 
 // Derived
@@ -48,17 +60,17 @@ export class Derived<T> {
   }
 
   compute() {
-    const prevContext = STATE.currentContext;
-    const prevComputation = STATE.runningComputation;
-
-    STATE.currentContext = new Set();
-    STATE.runningComputation = this;
+    const prevContext = getCurrentContext();
+    const prevComputation = getRunningComputation();
+    const context = setupCurrentContext(this);
+    setRunningComputation(this);
 
     const result = this.computeFn();
 
-    this.sources = STATE.currentContext;
-    STATE.currentContext = prevContext;
-    STATE.runningComputation = prevComputation;
+    this.sources = context;
+
+    setCurrentContext(prevContext);
+    setRunningComputation(prevComputation);
 
     if (result !== this.lastValue) {
       markUpdate(this, DIRTY);

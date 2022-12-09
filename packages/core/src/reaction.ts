@@ -1,6 +1,16 @@
 import type { Derived } from './derived.js';
 import type { Signal } from './signal.js';
-import { type STATUS, DIRTY, STATE, STALE, CLEAN } from './state.js';
+import {
+  type STATUS,
+  DIRTY,
+  STALE,
+  CLEAN,
+  setupCurrentContext,
+  getCurrentContext,
+  getRunningComputation,
+  setCurrentContext,
+  setRunningComputation,
+} from './state.js';
 import { validate } from './utils.js';
 
 export class Reaction {
@@ -23,18 +33,18 @@ export class Reaction {
     if (this.isDisposed) {
       return;
     }
-    const prevContext = STATE.currentContext;
-    const prevComputation = STATE.runningComputation;
+    const prevContext = getCurrentContext();
+    const prevComputation = getRunningComputation();
 
-    STATE.currentContext = new Set();
-    STATE.runningComputation = this;
+    const context = setupCurrentContext(this);
+    setRunningComputation(this);
 
     try {
       trapFn();
     } finally {
-      this.sources = STATE.currentContext;
-      STATE.currentContext = prevContext;
-      STATE.runningComputation = prevComputation;
+      this.sources = context;
+      setCurrentContext(prevContext);
+      setRunningComputation(prevComputation);
     }
   }
 
@@ -68,16 +78,16 @@ export class Reaction {
     if (this.isDisposed) {
       return;
     }
-    const prevContext = STATE.currentContext;
-    const prevComputation = STATE.runningComputation;
+    const prevContext = getCurrentContext();
+    const prevComputation = getRunningComputation();
 
-    STATE.currentContext = new Set();
-    STATE.runningComputation = this;
+    setupCurrentContext(this);
+    setRunningComputation(this);
 
     this.fn();
 
-    STATE.currentContext = prevContext;
-    STATE.runningComputation = prevComputation;
+    setCurrentContext(prevContext);
+    setRunningComputation(prevComputation);
   }
 
   dispose() {

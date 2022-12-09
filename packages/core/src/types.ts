@@ -8,3 +8,5 @@ export type ReactiveValue<T = unknown> = Signal<T> | Derived<T>;
 // | ResourceWithSignal<T, any>;
 
 export type DerivedFunction = Derived<unknown> | Reaction;
+
+export type Context = Set<Signal<unknown> | Derived<unknown>>;

@@ -1,6 +1,7 @@
 import type { Derived } from './derived.js';
 import { isReaction, type Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
+import type { DerivedFunction, Context } from './types.js';
 
 // State
 export const CLEAN = Symbol('Clean');
@@ -13,13 +14,49 @@ export type STATUS = CLEAN | STALE | DIRTY;
 export type NOTCLEAN = Exclude<STATUS, CLEAN>;
 
 class State {
-  currentContext: Set<Signal<unknown> | Derived<unknown>> | null = null;
+  contexts = new WeakMap<DerivedFunction, Context>();
+  currentContext: Context | null = null;
   runningComputation: Derived<unknown> | Reaction | null = null;
   scheduledReactions: Array<Reaction> = [];
   batchCount = 0;
 }
 
-export const STATE = new State();
+const STATE = new State();
+
+// Contexts
+// This function will either fetch the context associated with current reactive value, or create
+// a new one if it doesn't already exist, and prepare it to run by clearing it and setting it
+// as the new current context.
+export function setupCurrentContext(k: DerivedFunction): Context {
+  let context = STATE.contexts.get(k);
+
+  if (!context) {
+    context = new Set<Signal<unknown> | Derived<unknown>>();
+    STATE.contexts.set(k, context);
+  }
+
+  // This is doubly important: we need it to not only make sure we don't carry around wrong lists
+  // of dependencies, but also to make sure we avoid leaking the previous dependencies.
+  context.clear();
+  STATE.currentContext = context;
+  return context;
+}
+
+export function getCurrentContext() {
+  return STATE.currentContext;
+}
+
+export function setCurrentContext(context: Context | null) {
+  STATE.currentContext = context;
+}
+
+export function getRunningComputation() {
+  return STATE.runningComputation;
+}
+
+export function setRunningComputation(computation: Derived<unknown> | Reaction | null) {
+  STATE.runningComputation = computation;
+}
 
 export function batchStart() {
   STATE.batchCount++;
