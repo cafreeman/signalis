@@ -9,7 +9,7 @@ export class Derived<T> {
   lastValue?: T;
   status: STATUS = DIRTY;
   label: string;
-  logger: (...data: Array<any>) => void;
+  logger: (...data: Array<unknown>) => void;
 
   observers: Set<Derived<unknown> | Reaction> | null = null;
   sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
@@ -72,7 +72,7 @@ export function createDerived<T>(fn: () => T, label?: string): Derived<T> {
 }
 
 function createLogger(label?: string) {
-  return (...data: Array<any>) => {
+  return (...data: Array<unknown>) => {
     console.log(label ? `[${label}]` : '', ...data);
   };
 }

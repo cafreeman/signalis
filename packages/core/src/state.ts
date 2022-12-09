@@ -1,5 +1,5 @@
 import type { Derived } from './derived.js';
-import { type Reaction, isReaction } from './reaction.js';
+import { isReaction, type Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
 
 // State
@@ -13,7 +13,7 @@ export type STATUS = CLEAN | STALE | DIRTY;
 export type NOTCLEAN = Exclude<STATUS, CLEAN>;
 
 class State {
-  currentContext: Set<any> | null = null;
+  currentContext: Set<Signal<unknown> | Derived<unknown>> | null = null;
   runningComputation: Derived<unknown> | Reaction | null = null;
   scheduledReactions: Array<Reaction> = [];
   batchCount = 0;
@@ -21,22 +21,16 @@ class State {
 
 export const STATE = new State();
 
-function batchStart() {
+export function batchStart() {
   STATE.batchCount++;
 }
 
-function batchEnd() {
+export function batchEnd() {
   STATE.batchCount--;
 
   if (STATE.batchCount === 0) {
     runReactions();
   }
-}
-
-export function batch(cb: () => void) {
-  batchStart();
-  cb();
-  batchEnd();
 }
 
 export function markDependency(v: Signal<unknown> | Derived<unknown>) {

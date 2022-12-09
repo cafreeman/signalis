@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { createDerived } from '../src/derived';
 import { createEffect } from '../src/effect';
 import { createSignal } from '../src/signal';
-import { batch } from '../src/state';
+import { batch } from '../src/batch';
 
 describe.todo('batch', () => {
   test('batching with derived', () => {
