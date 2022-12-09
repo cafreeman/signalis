@@ -49,6 +49,8 @@ export class Reaction {
           // Have to recast here because `validate` might end up changing the status to something
           // besides STALE
           if ((this.status as STATUS) === DIRTY) {
+            // As soon as we find a single DIRTY source, we know that we need to re-compute, so we
+            // immediately bail
             break;
           }
         }
