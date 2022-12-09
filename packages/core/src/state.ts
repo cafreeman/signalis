@@ -1,7 +1,7 @@
 import type { Derived } from './derived.js';
 import { isReaction, type Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
-import type { DerivedFunction, Context } from './types.js';
+import type { Context, DerivedFunction } from './types.js';
 
 // State
 export const CLEAN = Symbol('Clean');
@@ -18,6 +18,7 @@ class State {
   currentContext: Context | null = null;
   runningComputation: Derived<unknown> | Reaction | null = null;
   scheduledReactions: Array<Reaction> = [];
+  pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
   batchCount = 0;
 }
 
@@ -66,8 +67,13 @@ export function batchEnd() {
   STATE.batchCount--;
 
   if (STATE.batchCount === 0) {
+    runPendingUpdates();
     runReactions();
   }
+}
+
+export function batchCount() {
+  return STATE.batchCount;
 }
 
 export function markDependency(v: Signal<unknown> | Derived<unknown>) {
@@ -85,26 +91,37 @@ export function markDependency(v: Signal<unknown> | Derived<unknown>) {
 }
 
 export function markUpdate(v: Signal<unknown> | Derived<unknown> | Reaction, state: NOTCLEAN) {
-  if (v.observers) {
-    v.observers.forEach((observer) => {
-      // immediate observers are definitely dirty since we know the source just updated
-      observer.status = state;
-      if (isReaction(observer)) {
-        scheduleReaction(observer);
-      }
+  function doMarkUpdate(
+    innerV: Signal<unknown> | Derived<unknown> | Reaction,
+    innerState: NOTCLEAN
+  ) {
+    if (innerV.observers) {
+      innerV.observers.forEach((observer) => {
+        // immediate observers are definitely dirty since we know the source just updated
+        observer.status = innerState;
+        if (isReaction(observer)) {
+          scheduleReaction(observer);
+        }
 
-      if (observer.observers) {
-        observer.observers.forEach((child) => {
-          // indirect observers (children of children) are at least stale since we know something
-          // further up the dependency tree has changed, but they might not actually be dirty
-          child.status = STALE;
-          if (isReaction(child)) {
-            scheduleReaction(child);
-          }
-          markUpdate(child, STALE);
-        });
-      }
-    });
+        if (observer.observers) {
+          observer.observers.forEach((child) => {
+            // indirect observers (children of children) are at least stale since we know something
+            // further up the dependency tree has changed, but they might not actually be dirty
+            child.status = STALE;
+            if (isReaction(child)) {
+              scheduleReaction(child);
+            }
+            doMarkUpdate(child, STALE);
+          });
+        }
+      });
+    }
+  }
+
+  if (STATE.batchCount !== 0) {
+    STATE.pendingUpdates.set(v, () => doMarkUpdate(v, state));
+  } else {
+    doMarkUpdate(v, state);
   }
 }
 
@@ -119,4 +136,27 @@ export function runReactions() {
     const reaction = STATE.scheduledReactions.pop();
     reaction?.validate();
   }
+}
+
+function runPendingUpdates() {
+  for (const update of STATE.pendingUpdates.values()) {
+    update();
+  }
+
+  STATE.pendingUpdates.clear();
+}
+
+export function checkPendingUpdate(
+  v: Signal<unknown> | Derived<unknown> | Reaction
+): (() => void) | undefined {
+  const update = STATE.pendingUpdates.get(v);
+
+  // If we find an update, we remove it from the queue since we're going to pass it back out to the
+  // caller so it can be called eagerly and we want to avoid re-running it when we flush the
+  // remaining pending updates
+  if (update) {
+    STATE.pendingUpdates.delete(v);
+  }
+
+  return update;
 }

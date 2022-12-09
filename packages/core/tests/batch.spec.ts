@@ -1,10 +1,10 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, onTestFailed, test, vi } from 'vitest';
 import { createDerived } from '../src/derived';
 import { createEffect } from '../src/effect';
 import { createSignal } from '../src/signal';
 import { batch } from '../src/batch';
 
-describe.todo('batch', () => {
+describe('batch', () => {
   test('batching with derived', () => {
     const todos = createSignal<Array<{ text: string }>>([]);
     const text = createSignal('blah');
@@ -91,6 +91,8 @@ describe.todo('batch', () => {
 
     const derived = createDerived(derivedSpy);
 
+    derived.value;
+
     expect(derivedSpy).toHaveBeenCalledOnce();
     expect(derived.value).toEqual(0);
 
@@ -165,8 +167,8 @@ describe.todo('batch', () => {
 
   test('local updates in batches', () => {
     const count = createSignal(0);
-    const double = createDerived(() => count.value * 2);
-    const triple = createDerived(() => count.value * 3);
+    const double = createDerived(() => count.value * 2, 'double');
+    const triple = createDerived(() => count.value * 3, 'triple');
 
     const effectSpy = vi.fn(() => {
       double.value;

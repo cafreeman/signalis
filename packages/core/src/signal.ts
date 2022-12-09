@@ -1,6 +1,6 @@
 import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
-import { markDependency, markUpdate, DIRTY, runReactions } from './state.js';
+import { DIRTY, markDependency, markUpdate, runReactions } from './state.js';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
