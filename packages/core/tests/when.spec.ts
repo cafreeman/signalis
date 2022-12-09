@@ -28,21 +28,23 @@ describe('when', () => {
 
     foo.value = 2;
 
-    expect(predicateSpy).toHaveBeenCalledTimes(2);
-    expect(message).toEqual('');
+    // Since foo.value is still even, we don't even re-evaluate the predicate again since we already
+    // know it hasn't changed
+    expect(predicateSpy).toHaveBeenCalledOnce();
     expect(cbSpy).not.toHaveBeenCalled();
+    expect(message).toEqual('');
 
     foo.value = 1;
 
-    expect(predicateSpy).toHaveBeenCalledTimes(3);
+    expect(predicateSpy).toHaveBeenCalledTimes(2);
     expect(cbSpy).toHaveBeenCalledOnce();
 
     foo.value = 2;
-    expect(predicateSpy).toHaveBeenCalledTimes(4);
+    expect(predicateSpy).toHaveBeenCalledTimes(3);
     expect(cbSpy).toHaveBeenCalledOnce();
 
     foo.value = 3;
-    expect(predicateSpy).toHaveBeenCalledTimes(5);
+    expect(predicateSpy).toHaveBeenCalledTimes(4);
     expect(cbSpy).toHaveBeenCalledTimes(2);
   });
 

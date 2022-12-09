@@ -1,4 +1,6 @@
-import { createTag, markDependency, markUpdate, REVISION, type Tagged } from './tag.js';
+import type { Derived } from './derived.js';
+import type { Reaction } from './reaction.js';
+import { DIRTY, markDependency, markUpdate, runReactions } from './state.js';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
@@ -10,17 +12,11 @@ function neverEqual(): boolean {
   return false;
 }
 
-/**
-  @private This is available for internal "friend" APIs to use, but it is *not*
-    legal to use by consumers.
- */
-export const Peek = Symbol('Peek');
-
-class _Signal<T> implements Tagged {
-  private _value: T;
-  private _isEqual: Equality<T>;
-
-  [REVISION] = createTag();
+// Signal
+export class _Signal<T> {
+  _value: T;
+  _isEqual: Equality<T>;
+  observers: Set<Derived<unknown> | Reaction> | null = null;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this._value = value;
@@ -32,25 +28,17 @@ class _Signal<T> implements Tagged {
     }
   }
 
-  get value(): T {
+  get value() {
     markDependency(this);
     return this._value;
   }
 
-  set value(v: T) {
-    if (!this._isEqual(this._value, v)) {
-      this._value = v;
-      markUpdate(this);
+  set value(newValue: T) {
+    if (!this._isEqual(this._value, newValue)) {
+      this._value = newValue;
+      markUpdate(this, DIRTY);
+      runReactions();
     }
-  }
-
-  // Expressly *not* part of the public API: peeking a value in contexts other than internal parts
-  // of the reactivity system itself tends very strongly to produce bugs, because it decouples
-  // consumers from the root state. (It is very, very tempting to wire your own caching on with a
-  // "peek", rather than using caching tools composed out of the core primitives, or to "be smarter"
-  // than the signal system.)
-  [Peek](): T {
-    return this._value;
   }
 }
 
@@ -70,7 +58,7 @@ export function createSignal<T extends {}>(
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<unknown> {
   if (arguments.length === 0) {
-    return new _Signal(null as unknown, false);
+    return new _Signal(null as unknown, neverEqual);
   } else {
     // SAFETY: TS doesn't understand that the `arguments` check means there is
     // always *something* passed as `value` here, and therefore that it is safe

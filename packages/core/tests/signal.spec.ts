@@ -1,7 +1,7 @@
 import { expect, describe, test, vi } from 'vitest';
-import { createSignal, Peek } from '../src/signal';
-import { createEffect } from '../src/effect';
 import isEqual from 'lodash/isEqual';
+import { createEffect } from '../src/effect';
+import { createSignal } from '../src/signal';
 
 describe('Signal', () => {
   test('it works', () => {
@@ -18,7 +18,7 @@ describe('Signal', () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  test('it can be made volative by passing false as second argument', () => {
+  test('it can be made volatile by passing false as second argument', () => {
     const foo = createSignal('foo', false);
 
     const spy = vi.fn(() => {
@@ -42,20 +42,6 @@ describe('Signal', () => {
     createEffect(spy);
 
     foo.value = { a: 1 };
-
-    expect(spy).toHaveBeenCalledTimes(1);
-  });
-
-  test('peek does not trigger updates', () => {
-    const foo = createSignal('foo');
-
-    const spy = vi.fn(() => {
-      foo[Peek]();
-    });
-
-    createEffect(spy);
-
-    foo.value = 'bar';
 
     expect(spy).toHaveBeenCalledTimes(1);
   });

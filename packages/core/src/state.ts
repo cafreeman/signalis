@@ -1,75 +1,30 @@
-import type { Reaction } from './reaction.js';
-import type { Tag, TaggedValue } from './tag.js';
-import type { DerivedFunction, ReactiveValue } from './types.js';
+import type { Derived } from './derived.js';
+import { isReaction, type Reaction } from './reaction.js';
+import type { Signal } from './signal.js';
+import type { Context, DerivedFunction } from './types.js';
 
-export type Context = Set<TaggedValue>;
-export type ReactionRegistry = WeakMap<ReactiveValue, Set<Reaction>>;
+// State
+export const CLEAN = Symbol('Clean');
+export type CLEAN = typeof CLEAN;
+export const STALE = Symbol('Stale');
+export type STALE = typeof STALE;
+export const DIRTY = Symbol('Dirty');
+export type DIRTY = typeof DIRTY;
+export type STATUS = CLEAN | STALE | DIRTY;
+export type NOTCLEAN = Exclude<STATUS, CLEAN>;
 
-interface State {
-  version: Tag;
-  batchCount: number;
-  contexts: WeakMap<DerivedFunction, Context>;
-  currentContext: Context | null;
-  reactionRegistry: ReactionRegistry;
-  pendingReactions: Array<Reaction>;
-  runningReaction: Reaction | null;
-  onTagDirtied: () => void;
+class State {
+  contexts = new WeakMap<DerivedFunction, Context>();
+  currentContext: Context | null = null;
+  runningComputation: Derived<unknown> | Reaction | null = null;
+  scheduledReactions: Array<Reaction> = [];
+  pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
+  batchCount = 0;
 }
 
-// SAFETY: this state object is responsible for the global `Tag` count, and so
-// consistently casts its `version` as `Tag` internally.
-const STATE: State = {
-  version: 0 as Tag,
+const STATE = new State();
 
-  batchCount: 0,
-
-  contexts: new WeakMap<DerivedFunction, Context>(),
-  currentContext: null,
-
-  reactionRegistry: new WeakMap<ReactiveValue, Set<Reaction>>(),
-  pendingReactions: [],
-  runningReaction: null,
-
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  onTagDirtied: () => {},
-};
-
-// Tags
-export function addTagToCurrentContext(t: TaggedValue) {
-  if (STATE.currentContext) {
-    STATE.currentContext.add(t);
-  }
-}
-
-export function onTagDirtied() {
-  return STATE.onTagDirtied();
-}
-
-export function setOnTagDirtied(fn: () => void): void {
-  STATE.onTagDirtied = fn;
-}
-
-// Version
-export function getVersion(): Tag {
-  return STATE.version;
-}
-
-export function incrementVersion(): Tag {
-  return ++STATE.version as Tag;
-}
-
-// Context
-export function hasCurrentContext(t: TaggedValue): boolean {
-  return !!STATE.currentContext && STATE.currentContext.has(t);
-}
-
-export function getCurrentContext(): Context | null {
-  return STATE.currentContext;
-}
-export function setCurrentContext(context: Context | null) {
-  STATE.currentContext = context;
-}
-
+// Contexts
 // This function will either fetch the context associated with current reactive value, or create
 // a new one if it doesn't already exist, and prepare it to run by clearing it and setting it
 // as the new current context.
@@ -77,51 +32,43 @@ export function setupCurrentContext(k: DerivedFunction): Context {
   let context = STATE.contexts.get(k);
 
   if (!context) {
-    context = new Set<TaggedValue>();
+    context = new Set<Signal<unknown> | Derived<unknown>>();
     STATE.contexts.set(k, context);
   }
 
   // This is doubly important: we need it to not only make sure we don't carry around wrong lists
   // of dependencies, but also to make sure we avoid leaking the previous dependencies.
   context.clear();
-  setCurrentContext(context);
+  STATE.currentContext = context;
   return context;
 }
 
-// Reactions
-export function isReactionRunning(): boolean {
-  return !!STATE.runningReaction;
+export function getCurrentContext(): Context | null {
+  return STATE.currentContext;
 }
 
-export function runningReactionHasDeps(): boolean {
-  return !!STATE.runningReaction && STATE.runningReaction.hasDeps;
+export function setCurrentContext(context: Context | null): void {
+  STATE.currentContext = context;
 }
 
-export function runningReactionIsInitialized(): boolean {
-  return !!STATE.runningReaction && STATE.runningReaction.initialized;
+export function getRunningComputation(): Derived<unknown> | Reaction | null {
+  return STATE.runningComputation;
 }
 
-export function runningReactionIsFinalized(): boolean {
-  return !!STATE.runningReaction && STATE.runningReaction.finalized;
+export function setRunningComputation(computation: Derived<unknown> | Reaction | null): void {
+  STATE.runningComputation = computation;
 }
 
-export function setRunningReaction(reaction: Reaction | null): void {
-  STATE.runningReaction = reaction;
-}
-
-// Batching
 export function batchStart(): void {
   STATE.batchCount++;
 }
 
-export function inBatch(): boolean {
-  return STATE.batchCount > 0;
-}
-
 export function batchEnd(): void {
   STATE.batchCount--;
+
   if (STATE.batchCount === 0) {
-    runPendingReactions();
+    runPendingUpdates();
+    runReactions();
   }
 }
 
@@ -129,40 +76,90 @@ export function batchCount(): number {
   return STATE.batchCount;
 }
 
-// Reaction Registry
-export function registerDependencyForReaction(dep: ReactiveValue, reaction: Reaction) {
-  const entry = STATE.reactionRegistry.get(dep);
+export function markDependency(v: Signal<unknown> | Derived<unknown>): void {
+  if (STATE.currentContext) {
+    STATE.currentContext.add(v);
+  }
 
-  if (entry) {
-    entry.add(reaction);
+  if (STATE.runningComputation) {
+    if (v.observers) {
+      v.observers.add(STATE.runningComputation);
+    } else {
+      v.observers = new Set([STATE.runningComputation]);
+    }
+  }
+}
+
+export function markUpdate(
+  v: Signal<unknown> | Derived<unknown> | Reaction,
+  state: NOTCLEAN
+): void {
+  function doMarkUpdate(
+    innerV: Signal<unknown> | Derived<unknown> | Reaction,
+    innerState: NOTCLEAN
+  ) {
+    if (innerV.observers) {
+      innerV.observers.forEach((observer) => {
+        // immediate observers are definitely dirty since we know the source just updated
+        observer.status = innerState;
+        if (isReaction(observer)) {
+          scheduleReaction(observer);
+        }
+
+        if (observer.observers) {
+          observer.observers.forEach((child) => {
+            // indirect observers (children of children) are at least stale since we know something
+            // further up the dependency tree has changed, but they might not actually be dirty
+            child.status = STALE;
+            if (isReaction(child)) {
+              scheduleReaction(child);
+            }
+            doMarkUpdate(child, STALE);
+          });
+        }
+      });
+    }
+  }
+
+  if (STATE.batchCount !== 0) {
+    STATE.pendingUpdates.set(v, () => doMarkUpdate(v, state));
   } else {
-    STATE.reactionRegistry.set(dep, new Set([reaction]));
+    doMarkUpdate(v, state);
   }
 }
 
-export function scheduleReactionsForReactiveValue(dep: ReactiveValue) {
-  const entry = STATE.reactionRegistry.get(dep);
-
-  if (entry) {
-    batchStart();
-    entry.forEach((reaction) => {
-      if (reaction.isDisposed) {
-        entry.delete(reaction);
-      } else {
-        reaction.schedule();
-      }
-    });
-    batchEnd();
+function scheduleReaction(reaction: Reaction): void {
+  if (!STATE.runningComputation) {
+    STATE.scheduledReactions.push(reaction);
   }
 }
 
-export function scheduleReaction(r: Reaction) {
-  STATE.pendingReactions.push(r);
+export function runReactions(): void {
+  while (STATE.scheduledReactions.length > 0) {
+    const reaction = STATE.scheduledReactions.pop();
+    reaction?.validate();
+  }
 }
 
-export function runPendingReactions() {
-  while (STATE.pendingReactions.length > 0) {
-    const reaction = STATE.pendingReactions.shift();
-    reaction?.compute();
+function runPendingUpdates(): void {
+  for (const update of STATE.pendingUpdates.values()) {
+    update();
   }
+
+  STATE.pendingUpdates.clear();
+}
+
+export function checkPendingUpdate(
+  v: Signal<unknown> | Derived<unknown> | Reaction
+): (() => void) | undefined {
+  const update = STATE.pendingUpdates.get(v);
+
+  // If we find an update, we remove it from the queue since we're going to pass it back out to the
+  // caller so it can be called eagerly and we want to avoid re-running it when we flush the
+  // remaining pending updates
+  if (update) {
+    STATE.pendingUpdates.delete(v);
+  }
+
+  return update;
 }

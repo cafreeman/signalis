@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
-import { createDerived, createSignal } from '../src';
+import { createDerived } from '../src/derived';
+import { createSignal } from '../src/signal';
 
 describe('Derived', () => {
   test('it reacts to signal changes', () => {
@@ -16,7 +17,7 @@ describe('Derived', () => {
     expect(isEven.value).to.be.false;
   });
 
-  test('it computes on initial creation, and recomputes when dependencies change', () => {
+  test('it does not compute on initial creation, but computes when dependencies change', () => {
     const foo = createSignal(0);
 
     const spy = vi.fn(() => {
@@ -25,33 +26,41 @@ describe('Derived', () => {
 
     const isEven = createDerived(spy);
 
-    expect(spy).toHaveBeenCalledOnce();
+    expect(spy).not.toHaveBeenCalled();
 
     foo.value = 1;
     isEven.value;
 
-    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   test('it only updates relevant derivations', () => {
     const foo = createSignal(0);
     const bar = createSignal(0);
 
-    const spy = vi.fn(() => {
+    const fooSpy = vi.fn(() => {
       return foo.value % 2 === 0;
     });
 
-    const isEven = createDerived(spy);
+    const isEven = createDerived(fooSpy);
+    expect(fooSpy).not.toHaveBeenCalled();
+    expect(isEven.value).toEqual(true);
+    expect(fooSpy).toHaveBeenCalledOnce();
 
     bar.value += 1;
-    isEven.value;
 
-    expect(spy).toHaveBeenCalledOnce();
+    expect(fooSpy).toHaveBeenCalledOnce();
+    expect(isEven.value).toEqual(true);
 
     foo.value += 1;
-    isEven.value;
 
-    expect(spy).toHaveBeenCalledTimes(2);
+    expect(isEven.value).toEqual(false);
+    expect(fooSpy).toHaveBeenCalledTimes(2);
+
+    bar.value += 1;
+
+    expect(isEven.value).toEqual(false);
+    expect(fooSpy).toHaveBeenCalledTimes(2);
   });
 
   test('one dependency can depend on another', () => {
@@ -61,29 +70,29 @@ describe('Derived', () => {
       return foo.value.toUpperCase();
     });
 
-    const toUpperCase = createDerived(uppercaseSpy);
+    const toUpperCase = createDerived(uppercaseSpy, 'uppercase');
 
     const lowercaseSpy = vi.fn(() => {
       return toUpperCase.value.toLowerCase();
     });
 
-    const toLowerCase = createDerived(lowercaseSpy);
+    const toLowerCase = createDerived(lowercaseSpy, 'lowercase');
 
     foo.value = 'bar';
 
     expect(toUpperCase.value).toEqual('BAR');
     expect(toLowerCase.value).toEqual('bar');
 
-    expect(uppercaseSpy).toHaveBeenCalledTimes(2);
-    expect(lowercaseSpy).toHaveBeenCalledTimes(2);
+    expect(uppercaseSpy).toHaveBeenCalledTimes(1);
+    expect(lowercaseSpy).toHaveBeenCalledTimes(1);
 
     foo.value = 'baz';
 
     expect(toUpperCase.value).toEqual('BAZ');
     expect(toLowerCase.value).toEqual('baz');
 
-    expect(lowercaseSpy).toHaveBeenCalledTimes(3);
-    expect(uppercaseSpy).toHaveBeenCalledTimes(3);
+    expect(lowercaseSpy).toHaveBeenCalledTimes(2);
+    expect(uppercaseSpy).toHaveBeenCalledTimes(2);
   });
 
   test('chain of derived values', () => {
@@ -121,6 +130,8 @@ describe('Derived', () => {
 
     const arrayLength = createDerived(spy);
 
+    expect(spy).not.toHaveBeenCalled();
+    expect(arrayLength.value).toEqual(0);
     expect(spy).toHaveBeenCalledOnce();
 
     someArray.value.push(1);
@@ -141,17 +152,20 @@ describe('Derived', () => {
       return Object.keys(someObject.value).length;
     });
 
-    const arrayLength = createDerived(spy);
+    const numKeys = createDerived(spy);
 
+    expect(spy).not.toHaveBeenCalled();
+    expect(numKeys.value).toEqual(0);
     expect(spy).toHaveBeenCalledOnce();
+
     someObject.value.a = 1;
 
-    expect(arrayLength.value).toEqual(0);
+    expect(numKeys.value).toEqual(0);
     expect(spy).toHaveBeenCalledOnce();
 
     someObject.value = { ...someObject.value, b: 2 };
 
-    expect(arrayLength.value).toEqual(2);
+    expect(numKeys.value).toEqual(2);
     expect(spy).toHaveBeenCalledTimes(2);
   });
 });

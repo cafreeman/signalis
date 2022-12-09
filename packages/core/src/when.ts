@@ -4,15 +4,17 @@ interface WhenOptions {
   final?: boolean;
 }
 
-export function when(predicate: () => boolean, fn: () => void, options?: WhenOptions) {
+export function when(predicate: () => boolean, fn: () => void, options?: WhenOptions): () => void {
   let reaction: Reaction;
 
   if (options && options.final) {
     reaction = new Reaction(function (this: Reaction) {
       let cond = false;
+
       this.trap(() => {
         cond = predicate();
       });
+
       if (cond) {
         fn();
         this.dispose();
@@ -21,6 +23,7 @@ export function when(predicate: () => boolean, fn: () => void, options?: WhenOpt
   } else {
     reaction = new Reaction(function (this: Reaction) {
       let cond = false;
+
       this.trap(() => {
         cond = predicate();
       });

@@ -1,9 +1,9 @@
-import { CleanupFn, ComputeFn, Reaction } from './reaction.js';
+import { Reaction } from './reaction.js';
 
-export function createEffect(fn: ComputeFn, dispose?: CleanupFn): () => void {
+export function createEffect(fn: () => void, cleanup?: () => void) {
   const effect = new Reaction(function (this: Reaction) {
     this.trap(fn);
-  }, dispose);
+  }, cleanup);
 
   effect.compute();
 
