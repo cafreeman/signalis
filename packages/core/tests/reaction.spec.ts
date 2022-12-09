@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
-import { createDerived, createSignal, Reaction } from '../src';
+import { createDerived } from '../src/derived';
+import { Reaction } from '../src/reaction';
+import { createSignal } from '../src/signal';
 
 describe('reaction', () => {
   test('it works', () => {
@@ -209,8 +211,11 @@ describe('reaction', () => {
     expect(didCleanup).toBe(true);
   });
 
-  test('prevents you from mutating dependencies inside of an effect in order to prevent cycles', () => {
+  test('does not allow cycles', () => {
     const foo = createSignal(0);
+    const effectSpy = vi.fn(() => {
+      foo.value++;
+    });
 
     const effectWrapper = () => {
       const reaction = new Reaction(function () {
@@ -224,10 +229,36 @@ describe('reaction', () => {
       foo.value++;
     };
 
-    expect(effectWrapper).toThrowError(
-      'Cannot update a tag that has been used during a computation.'
-    );
+    effectWrapper();
+
+    expect(effectSpy).not.toHaveBeenCalled();
+
+    // TODO we really need an error or warning or something here rather than just making the effect
+    // totally inert
+    // expect(effectWrapper).toThrowError(
+    //   'cannot update a signal that is being used during a computation.'
+    // );
   });
+
+  // test('prevents you from mutating dependencies inside of an effect in order to prevent cycles', () => {
+  //   const foo = createSignal(0);
+
+  //   const effectWrapper = () => {
+  //     const reaction = new Reaction(function () {
+  //       this.trap(() => {
+  //         foo.value++;
+  //       });
+  //     });
+
+  //     reaction.compute();
+
+  //     foo.value++;
+  //   };
+
+  //   expect(effectWrapper).toThrowError(
+  //     'Cannot update a tag that has been used during a computation.'
+  //   );
+  // });
 
   describe('using trap for lazy reactions', () => {
     test('it works with signals', () => {

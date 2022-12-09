@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { batch, createDerived, createSignal } from '../../src/index.js';
+import { createDerived } from '../../src/derived';
+import { createSignal } from '../../src/signal';
 
 describe('core reactivity', () => {
   /*

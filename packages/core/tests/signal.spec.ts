@@ -1,6 +1,7 @@
 import { expect, describe, test, vi } from 'vitest';
-import { createSignal, createEffect } from '../src/index.js';
 import isEqual from 'lodash/isEqual';
+import { createEffect } from '../src/effect';
+import { createSignal } from '../src/signal';
 
 describe('Signal', () => {
   test('it works', () => {
@@ -17,7 +18,7 @@ describe('Signal', () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
-  test('it can be made volative by passing false as second argument', () => {
+  test('it can be made volatile by passing false as second argument', () => {
     const foo = createSignal('foo', false);
 
     const spy = vi.fn(() => {

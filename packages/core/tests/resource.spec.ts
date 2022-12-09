@@ -3,7 +3,7 @@ import { describe, expect, expectTypeOf, test, vi } from 'vitest';
 import { createEffect, createSignal } from '../src';
 import { createResource, type Resource } from '../src/resource';
 
-describe('Resource', () => {
+describe.skip('Resource', () => {
   describe('without source', () => {
     test('it works', async () => {
       const deferred = defer<string>();
