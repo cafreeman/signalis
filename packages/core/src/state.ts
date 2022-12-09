@@ -72,9 +72,6 @@ export function markUpdate(v: Signal<unknown> | Derived<unknown> | Reaction, sta
 }
 
 function scheduleReaction(reaction: Reaction) {
-  // if (STATE.runningComputation === reaction) {
-  //   throw new Error('cannot update a signal that is being used during a computation.');
-  // }
   if (!STATE.runningComputation) {
     STATE.scheduledReactions.push(reaction);
   }

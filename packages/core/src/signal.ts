@@ -42,9 +42,6 @@ export class _Signal<T> {
   }
 }
 
-// export function createSignal<T>(value: T): Signal<T> {
-//   return new Signal(value);
-// }
 // Define the public interface to Signal to expressly exclude `_isEqual`: forbidding other types
 // from (even implicitly) depending on it very much simplifies the types throughout the rest of the
 // system, because it eliminates a variance hazard. Additionally, doing this with `export interface`

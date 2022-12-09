@@ -12,7 +12,7 @@ export class Derived<T> {
   logger: (...data: Array<unknown>) => void;
 
   observers: Set<Derived<unknown> | Reaction> | null = null;
-  sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
+  sources: Set<Signal<unknown> | Derived<unknown>> | null = null;
 
   constructor(fn: () => T, label?: string) {
     this.computeFn = fn;
@@ -56,7 +56,7 @@ export class Derived<T> {
 
     const result = this.computeFn();
 
-    this.sources = Array.from(STATE.currentContext);
+    this.sources = STATE.currentContext;
     STATE.currentContext = prevContext;
     STATE.runningComputation = prevComputation;
 

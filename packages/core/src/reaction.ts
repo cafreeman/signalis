@@ -4,7 +4,7 @@ import { type STATUS, DIRTY, STATE, STALE, CLEAN } from './state.js';
 import { validate } from './utils.js';
 
 export class Reaction {
-  sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
+  sources: Set<Signal<unknown> | Derived<unknown>> | null = null;
   observers = null;
   fn: () => void;
   cleanupFn?: () => void;
@@ -32,7 +32,7 @@ export class Reaction {
     try {
       trapFn();
     } finally {
-      this.sources = Array.from(STATE.currentContext);
+      this.sources = STATE.currentContext;
       STATE.currentContext = prevContext;
       STATE.runningComputation = prevComputation;
     }
