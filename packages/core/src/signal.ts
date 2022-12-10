@@ -1,6 +1,6 @@
 import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
-import { DIRTY, markDependency, markUpdate, runReactions } from './state.js';
+import { DIRTY, getRunningComputation, markDependency, markUpdate, runReactions } from './state.js';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
@@ -14,9 +14,10 @@ function neverEqual(): boolean {
 
 // Signal
 export class _Signal<T> {
+  type = 'signal';
   _value: T;
   _isEqual: Equality<T>;
-  observers: Set<Derived<unknown> | Reaction> | null = null;
+  observers: Array<Derived<unknown> | Reaction> | null = null;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this._value = value;
@@ -27,6 +28,9 @@ export class _Signal<T> {
       this._isEqual = isEqual;
     }
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  validate() {}
 
   get value() {
     markDependency(this);

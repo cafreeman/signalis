@@ -83,10 +83,34 @@ export function markDependency(v: Signal<unknown> | Derived<unknown>): void {
 
   if (STATE.runningComputation) {
     if (v.observers) {
-      v.observers.add(STATE.runningComputation);
+      v.observers.push(STATE.runningComputation);
     } else {
-      v.observers = new Set([STATE.runningComputation]);
+      v.observers = [STATE.runningComputation];
     }
+  }
+}
+
+function doMarkUpdate(innerV: Signal<unknown> | Derived<unknown> | Reaction, innerState: NOTCLEAN) {
+  if (innerV.observers) {
+    innerV.observers.forEach((observer) => {
+      // immediate observers are definitely dirty since we know the source just updated
+      observer.status = innerState;
+      if (isReaction(observer)) {
+        scheduleReaction(observer);
+      }
+
+      if (observer.observers) {
+        observer.observers.forEach((child) => {
+          // indirect observers (children of children) are at least stale since we know something
+          // further up the dependency tree has changed, but they might not actually be dirty
+          child.status = STALE;
+          if (isReaction(child)) {
+            scheduleReaction(child);
+          }
+          doMarkUpdate(child, STALE);
+        });
+      }
+    });
   }
 }
 
@@ -94,33 +118,6 @@ export function markUpdate(
   v: Signal<unknown> | Derived<unknown> | Reaction,
   state: NOTCLEAN
 ): void {
-  function doMarkUpdate(
-    innerV: Signal<unknown> | Derived<unknown> | Reaction,
-    innerState: NOTCLEAN
-  ) {
-    if (innerV.observers) {
-      innerV.observers.forEach((observer) => {
-        // immediate observers are definitely dirty since we know the source just updated
-        observer.status = innerState;
-        if (isReaction(observer)) {
-          scheduleReaction(observer);
-        }
-
-        if (observer.observers) {
-          observer.observers.forEach((child) => {
-            // indirect observers (children of children) are at least stale since we know something
-            // further up the dependency tree has changed, but they might not actually be dirty
-            child.status = STALE;
-            if (isReaction(child)) {
-              scheduleReaction(child);
-            }
-            doMarkUpdate(child, STALE);
-          });
-        }
-      });
-    }
-  }
-
   if (STATE.batchCount !== 0) {
     STATE.pendingUpdates.set(v, () => doMarkUpdate(v, state));
   } else {
@@ -150,8 +147,12 @@ function runPendingUpdates(): void {
 }
 
 export function checkPendingUpdate(
-  v: Signal<unknown> | Derived<unknown> | Reaction
+  v: Signal<unknown> | Derived<unknown> | Reaction | undefined
 ): (() => void) | undefined {
+  if (!v) {
+    return;
+  }
+
   const update = STATE.pendingUpdates.get(v);
 
   // If we find an update, we remove it from the queue since we're going to pass it back out to the

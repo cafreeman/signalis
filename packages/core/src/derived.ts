@@ -13,9 +13,10 @@ import {
   setRunningComputation,
   setupCurrentContext,
   STALE,
+  STATE,
   type STATUS,
 } from './state.js';
-import { unlinkObservers, validate } from './utils.js';
+import { unlinkObservers } from './utils.js';
 
 // Derived
 export class Derived<T> {
@@ -27,7 +28,7 @@ export class Derived<T> {
   label: string;
   logger: (...data: Array<unknown>) => void;
 
-  observers: Set<Derived<unknown> | Reaction> | null = null;
+  observers: Array<Derived<unknown> | Reaction> | null = null;
   sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
 
   constructor(fn: () => T, label?: string) {
@@ -44,12 +45,13 @@ export class Derived<T> {
 
   validate(): void {
     if (this.sources) {
+      const { sources } = this;
       if (this.status === STALE) {
         // if we're stale, we know that we *might* need to recompute, so we call `validate` on
         // each source until we find one that is dirty. If we end up validating a source as dirty,
         // it'll mark us as dirty as well, so we immediately break and proceed to recomputing.
-        for (const source of this.sources) {
-          validate(source);
+        for (let i = 0; i < sources.length; i++) {
+          sources[i]?.validate();
           // Have to recast here because `validate` might end up changing the status to something
           // besides STALE
           if ((this.status as STATUS) === DIRTY) {
@@ -65,8 +67,8 @@ export class Derived<T> {
         // need to recompute. We don't run a risk of leaking further reactions outside of the
         // transaction here because `markUpdate` will still buffer subsequent updates as long we're
         // still in a batch.
-        for (const source of this.sources) {
-          const update = checkPendingUpdate(source);
+        for (let i = 0; i < sources.length; i++) {
+          const update = checkPendingUpdate(sources[i]);
 
           if (update) {
             update();

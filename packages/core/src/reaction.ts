@@ -1,22 +1,22 @@
 import type { Derived } from './derived.js';
 import type { Signal } from './signal.js';
 import {
-  type STATUS,
-  DIRTY,
-  STALE,
   CLEAN,
-  setupCurrentContext,
+  DIRTY,
   getCurrentContext,
   getRunningComputation,
   setCurrentContext,
   setRunningComputation,
+  setupCurrentContext,
+  STALE,
+  type STATUS,
 } from './state.js';
-import { unlinkObservers, validate } from './utils.js';
+import { unlinkObservers } from './utils.js';
 
 export class Reaction {
   readonly type = 'reaction';
   sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
-  observers = null;
+  observers: Array<Derived<unknown> | Reaction> | null = null;
   fn: () => void;
   cleanupFn?: () => void;
   status: STATUS = DIRTY;
@@ -56,9 +56,10 @@ export class Reaction {
       return;
     }
     if (this.status === STALE) {
-      if (this.sources) {
-        for (const source of this.sources) {
-          validate(source);
+      const { sources } = this;
+      if (sources) {
+        for (let i = 0; i < sources.length; i++) {
+          sources[i]?.validate();
           // Have to recast here because `validate` might end up changing the status to something
           // besides STALE
           if ((this.status as STATUS) === DIRTY) {
