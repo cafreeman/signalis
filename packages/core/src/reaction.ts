@@ -46,6 +46,20 @@ export class Reaction {
       trapFn();
     } finally {
       this.sources = Array.from(context);
+
+      if (context.size > 0 && this.sources) {
+        for (let i = 0; i < this.sources.length; i++) {
+          const source = this.sources[i];
+          if (source) {
+            if (source.observers) {
+              source.observers.push(this);
+            } else {
+              source.observers = [this];
+            }
+          }
+        }
+      }
+
       setCurrentContext(prevContext);
       setRunningComputation(prevComputation);
     }

@@ -30,6 +30,7 @@
   "author": "Chris Freeman",
   "license": "MIT",
   "devDependencies": {
+    "@rollup/plugin-strip": "^3.0.1",
     "@types/lodash": "^4.14.189",
     "lodash": "^4.17.21",
     "p-defer": "^4.0.0"

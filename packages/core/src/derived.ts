@@ -13,7 +13,6 @@ import {
   setRunningComputation,
   setupCurrentContext,
   STALE,
-  STATE,
   type STATUS,
 } from './state.js';
 import { unlinkObservers } from './utils.js';
@@ -96,6 +95,19 @@ export class Derived<T> {
     const result = this.computeFn();
 
     this.sources = Array.from(context);
+
+    if (context.size > 0) {
+      for (let i = 0; i < this.sources.length; i++) {
+        const source = this.sources[i];
+        if (source) {
+          if (source.observers) {
+            source.observers.push(this);
+          } else {
+            source.observers = [this];
+          }
+        }
+      }
+    }
 
     setCurrentContext(prevContext);
     setRunningComputation(prevComputation);

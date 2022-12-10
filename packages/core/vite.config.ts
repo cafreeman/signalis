@@ -1,5 +1,6 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
+import strip from '@rollup/plugin-strip';
 
 export default defineConfig({
   build: {
@@ -9,4 +10,10 @@ export default defineConfig({
       fileName: 'signalis-core',
     },
   },
+  plugins: [
+    strip({
+      include: ['**/*.ts'],
+      functions: ['assert'],
+    }),
+  ],
 });

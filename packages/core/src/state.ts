@@ -80,14 +80,6 @@ export function markDependency(v: Signal<unknown> | Derived<unknown>): void {
   if (STATE.currentContext) {
     STATE.currentContext.add(v);
   }
-
-  if (STATE.runningComputation) {
-    if (v.observers) {
-      v.observers.push(STATE.runningComputation);
-    } else {
-      v.observers = [STATE.runningComputation];
-    }
-  }
 }
 
 function doMarkUpdate(innerV: Signal<unknown> | Derived<unknown> | Reaction, innerState: NOTCLEAN) {

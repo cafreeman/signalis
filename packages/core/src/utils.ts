@@ -12,10 +12,25 @@ export function unlinkObservers(target: Derived<unknown> | Reaction) {
     if (!source.observers) {
       return;
     }
-    const idx = source.observers.findIndex((v) => v === target);
-    source.observers[idx] = source.observers[source.observers.length - 1] as
-      | Derived<unknown>
-      | Reaction;
-    source.observers.pop();
+    spliceWhenKnown(source.observers, target);
+  }
+}
+
+function spliceWhenKnown<T>(array: Array<T>, target: T): Array<T> {
+  const idx = array.findIndex((v) => v === target);
+  assert(idx !== -1, 'item must be in the array');
+
+  const last = array[array.length - 1];
+  assert(!!last); // array cannot be empty *and* idx not be set!
+
+  array[idx] = last;
+  array.pop();
+
+  return array;
+}
+
+function assert(condition: any, msg?: string): asserts condition {
+  if (!condition) {
+    throw new Error(msg);
   }
 }
