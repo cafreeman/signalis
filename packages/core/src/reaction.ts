@@ -5,6 +5,8 @@ import {
   DIRTY,
   getCurrentContext,
   getRunningComputation,
+  NOTCLEAN,
+  scheduleReaction,
   setCurrentContext,
   setRunningComputation,
   setupCurrentContext,
@@ -19,7 +21,7 @@ export class Reaction {
   observers: Array<Derived<unknown> | Reaction> | null = null;
   fn: () => void;
   cleanupFn?: () => void;
-  status: STATUS = DIRTY;
+  status: STATUS = CLEAN;
   isDisposed = false;
 
   constructor(fn: () => void, cleanup?: () => void) {
@@ -106,6 +108,15 @@ export class Reaction {
 
     setCurrentContext(prevContext);
     setRunningComputation(prevComputation);
+  }
+
+  markUpdate(status: NOTCLEAN) {
+    // CLEAN < STALE < DIRTY
+    if (this.status < status) {
+      scheduleReaction(this);
+
+      this.status = status;
+    }
   }
 
   dispose() {

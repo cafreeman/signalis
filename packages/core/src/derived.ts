@@ -8,7 +8,8 @@ import {
   getCurrentContext,
   getRunningComputation,
   markDependency,
-  markUpdate,
+  markUpdates,
+  NOTCLEAN,
   setCurrentContext,
   setRunningComputation,
   setupCurrentContext,
@@ -113,8 +114,21 @@ export class Derived<T> {
     setRunningComputation(prevComputation);
 
     if (result !== this.lastValue) {
-      markUpdate(this, DIRTY);
+      markUpdates(this, DIRTY);
       this.lastValue = result;
+    }
+  }
+
+  markUpdate(status: NOTCLEAN) {
+    // CLEAN < STALE < DIRTY
+    if (this.status < status) {
+      this.status = status;
+
+      if (this.observers) {
+        for (let i = 0; i < this.observers.length; i++) {
+          this.observers[i]?.markUpdate(STALE);
+        }
+      }
     }
   }
 }

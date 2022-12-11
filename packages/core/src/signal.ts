@@ -1,6 +1,6 @@
 import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
-import { DIRTY, markDependency, markUpdate, runReactions } from './state.js';
+import { DIRTY, markDependency, markUpdates, runReactions } from './state.js';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
@@ -40,7 +40,7 @@ export class _Signal<T> {
   set value(newValue: T) {
     if (!this._isEqual(this._value, newValue)) {
       this._value = newValue;
-      markUpdate(this, DIRTY);
+      markUpdates(this, DIRTY);
       runReactions();
     }
   }

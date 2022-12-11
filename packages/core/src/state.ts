@@ -1,14 +1,14 @@
 import type { Derived } from './derived.js';
-import { isReaction, type Reaction } from './reaction.js';
+import type { Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
 import type { Context, DerivedFunction } from './types.js';
 
 // State
-export const CLEAN = Symbol('Clean');
+export const CLEAN = 0 as const;
 export type CLEAN = typeof CLEAN;
-export const STALE = Symbol('Stale');
+export const STALE = 1 as const;
 export type STALE = typeof STALE;
-export const DIRTY = Symbol('Dirty');
+export const DIRTY = 2 as const;
 export type DIRTY = typeof DIRTY;
 export type STATUS = CLEAN | STALE | DIRTY;
 export type NOTCLEAN = Exclude<STATUS, CLEAN>;
@@ -82,42 +82,28 @@ export function markDependency(v: Signal<unknown> | Derived<unknown>): void {
   }
 }
 
-function doMarkUpdate(innerV: Signal<unknown> | Derived<unknown> | Reaction, innerState: NOTCLEAN) {
-  if (innerV.observers) {
-    innerV.observers.forEach((observer) => {
-      // immediate observers are definitely dirty since we know the source just updated
-      observer.status = innerState;
-      if (isReaction(observer)) {
-        scheduleReaction(observer);
-      }
-
-      if (observer.observers) {
-        observer.observers.forEach((child) => {
-          // indirect observers (children of children) are at least stale since we know something
-          // further up the dependency tree has changed, but they might not actually be dirty
-          child.status = STALE;
-          if (isReaction(child)) {
-            scheduleReaction(child);
-          }
-          doMarkUpdate(child, STALE);
-        });
-      }
-    });
+function runUpdatesForObserver(source: Signal<unknown> | Derived<unknown>, status: NOTCLEAN) {
+  if (source.observers) {
+    for (let i = 0; i < source.observers.length; i++) {
+      source.observers[i]?.markUpdate(status);
+    }
   }
 }
 
-export function markUpdate(
-  v: Signal<unknown> | Derived<unknown> | Reaction,
-  state: NOTCLEAN
-): void {
-  if (STATE.batchCount !== 0) {
-    STATE.pendingUpdates.set(v, () => doMarkUpdate(v, state));
-  } else {
-    doMarkUpdate(v, state);
+// Update the status on all observers of a given source. If we're currently in the middle of a batch,
+// the status update will instead be deferred until the batch is done.
+export function markUpdates(source: Signal<unknown> | Derived<unknown>, status: NOTCLEAN): void {
+  if (source.observers) {
+    const inBatch = batchCount() !== 0;
+    if (inBatch) {
+      STATE.pendingUpdates.set(source, () => runUpdatesForObserver(source, status));
+    } else {
+      runUpdatesForObserver(source, status);
+    }
   }
 }
 
-function scheduleReaction(reaction: Reaction): void {
+export function scheduleReaction(reaction: Reaction): void {
   if (!STATE.runningComputation) {
     STATE.scheduledReactions.push(reaction);
   }
