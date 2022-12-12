@@ -1,7 +1,7 @@
 import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
-import type { Context, DerivedFunction } from './types.js';
+import type { Context, ReactiveFunction, ReactiveValue } from './types.js';
 
 // State
 export const CLEAN = 0 as const;
@@ -14,9 +14,8 @@ export type STATUS = CLEAN | STALE | DIRTY;
 export type NOTCLEAN = Exclude<STATUS, CLEAN>;
 
 class State {
-  contexts = new WeakMap<DerivedFunction, Context>();
   currentContext: Context | null = null;
-  runningComputation: Derived<unknown> | Reaction | null = null;
+  runningComputation: ReactiveFunction | null = null;
   scheduledReactions: Array<Reaction> = [];
   pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
   batchCount = 0;
@@ -25,24 +24,6 @@ class State {
 const STATE = new State();
 
 // Contexts
-// This function will either fetch the context associated with current reactive value, or create
-// a new one if it doesn't already exist, and prepare it to run by clearing it and setting it
-// as the new current context.
-export function setupCurrentContext(k: DerivedFunction): Context {
-  let context = STATE.contexts.get(k);
-
-  if (!context) {
-    context = new Set<Signal<unknown> | Derived<unknown>>();
-    STATE.contexts.set(k, context);
-  }
-
-  // This is doubly important: we need it to not only make sure we don't carry around wrong lists
-  // of dependencies, but also to make sure we avoid leaking the previous dependencies.
-  context.clear();
-  STATE.currentContext = context;
-  return context;
-}
-
 export function getCurrentContext(): Context | null {
   return STATE.currentContext;
 }
@@ -51,11 +32,11 @@ export function setCurrentContext(context: Context | null): void {
   STATE.currentContext = context;
 }
 
-export function getRunningComputation(): Derived<unknown> | Reaction | null {
+export function getRunningComputation(): ReactiveFunction | null {
   return STATE.runningComputation;
 }
 
-export function setRunningComputation(computation: Derived<unknown> | Reaction | null): void {
+export function setRunningComputation(computation: ReactiveFunction | null): void {
   STATE.runningComputation = computation;
 }
 
@@ -76,13 +57,13 @@ export function batchCount(): number {
   return STATE.batchCount;
 }
 
-export function markDependency(v: Signal<unknown> | Derived<unknown>): void {
+export function markDependency(v: ReactiveValue): void {
   if (STATE.currentContext) {
-    STATE.currentContext.add(v);
+    STATE.currentContext.push(v);
   }
 }
 
-function runUpdatesForObserver(source: Signal<unknown> | Derived<unknown>, status: NOTCLEAN) {
+function runUpdatesForObserver(source: ReactiveValue, status: NOTCLEAN) {
   if (source.observers) {
     for (let i = 0; i < source.observers.length; i++) {
       source.observers[i]?.markUpdate(status);
@@ -92,7 +73,7 @@ function runUpdatesForObserver(source: Signal<unknown> | Derived<unknown>, statu
 
 // Update the status on all observers of a given source. If we're currently in the middle of a batch,
 // the status update will instead be deferred until the batch is done.
-export function markUpdates(source: Signal<unknown> | Derived<unknown>, status: NOTCLEAN): void {
+export function markUpdates(source: ReactiveValue, status: NOTCLEAN): void {
   if (source.observers) {
     const inBatch = batchCount() !== 0;
     if (inBatch) {

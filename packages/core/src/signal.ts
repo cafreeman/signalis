@@ -14,7 +14,7 @@ function neverEqual(): boolean {
 
 // Signal
 export class _Signal<T> {
-  type = 'signal';
+  readonly type = 'signal';
   _value: T;
   _isEqual: Equality<T>;
   observers: Array<Derived<unknown> | Reaction> | null = null;

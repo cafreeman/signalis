@@ -1,5 +1,3 @@
-import type { Derived } from './derived.js';
-import type { Signal } from './signal.js';
 import {
   CLEAN,
   DIRTY,
@@ -9,16 +7,16 @@ import {
   scheduleReaction,
   setCurrentContext,
   setRunningComputation,
-  setupCurrentContext,
   STALE,
   type STATUS,
 } from './state.js';
+import type { ReactiveFunction, ReactiveValue } from './types.js';
 import { unlinkObservers } from './utils.js';
 
 export class Reaction {
   readonly type = 'reaction';
-  sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
-  observers: Array<Derived<unknown> | Reaction> | null = null;
+  sources: Array<ReactiveValue> | null = null;
+  observers: Array<ReactiveFunction> | null = null;
   fn: () => void;
   cleanupFn?: () => void;
   status: STATUS = CLEAN;
@@ -39,7 +37,8 @@ export class Reaction {
     const prevContext = getCurrentContext();
     const prevComputation = getRunningComputation();
 
-    const context = setupCurrentContext(this);
+    const context: Array<ReactiveValue> = [];
+    setCurrentContext(context);
     setRunningComputation(this);
 
     unlinkObservers(this);
@@ -47,17 +46,15 @@ export class Reaction {
     try {
       trapFn();
     } finally {
-      this.sources = Array.from(context);
+      this.sources = context;
 
-      if (context.size > 0 && this.sources) {
-        for (let i = 0; i < this.sources.length; i++) {
-          const source = this.sources[i];
-          if (source) {
-            if (source.observers) {
-              source.observers.push(this);
-            } else {
-              source.observers = [this];
-            }
+      for (let i = 0; i < this.sources.length; i++) {
+        const source = this.sources[i];
+        if (source) {
+          if (source.observers) {
+            source.observers.push(this);
+          } else {
+            source.observers = [this];
           }
         }
       }
@@ -101,7 +98,8 @@ export class Reaction {
     const prevContext = getCurrentContext();
     const prevComputation = getRunningComputation();
 
-    setupCurrentContext(this);
+    const context: Array<ReactiveValue> = [];
+    setCurrentContext(context);
     setRunningComputation(this);
 
     this.fn();
@@ -127,6 +125,6 @@ export class Reaction {
   }
 }
 
-export function isReaction(v: Derived<unknown> | Reaction): v is Reaction {
+export function isReaction(v: ReactiveFunction): v is Reaction {
   return v.type === 'reaction';
 }

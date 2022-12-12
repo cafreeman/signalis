@@ -1,5 +1,3 @@
-import type { Reaction } from './reaction.js';
-import type { Signal } from './signal.js';
 import {
   batchCount,
   checkPendingUpdate,
@@ -12,10 +10,10 @@ import {
   NOTCLEAN,
   setCurrentContext,
   setRunningComputation,
-  setupCurrentContext,
   STALE,
   type STATUS,
 } from './state.js';
+import type { ReactiveFunction, ReactiveValue } from './types.js';
 import { unlinkObservers } from './utils.js';
 
 // Derived
@@ -26,15 +24,15 @@ export class Derived<T> {
   lastValue?: T;
   status: STATUS = DIRTY;
   label: string;
-  logger: (...data: Array<unknown>) => void;
+  // logger: (...data: Array<unknown>) => void;
 
-  observers: Array<Derived<unknown> | Reaction> | null = null;
-  sources: Array<Signal<unknown> | Derived<unknown>> | null = null;
+  observers: Array<ReactiveFunction> | null = null;
+  sources: Array<ReactiveValue> | null = null;
 
   constructor(fn: () => T, label?: string) {
     this.computeFn = fn;
     this.label = label ?? '';
-    this.logger = createLogger(label);
+    // this.logger = createLogger(label);
   }
 
   get value(): T {
@@ -88,24 +86,24 @@ export class Derived<T> {
   compute(): void {
     const prevContext = getCurrentContext();
     const prevComputation = getRunningComputation();
-    const context = setupCurrentContext(this);
+
+    const context: Array<ReactiveValue> = [];
+    setCurrentContext(context);
     setRunningComputation(this);
 
     unlinkObservers(this);
 
     const result = this.computeFn();
 
-    this.sources = Array.from(context);
+    this.sources = context;
 
-    if (context.size > 0) {
-      for (let i = 0; i < this.sources.length; i++) {
-        const source = this.sources[i];
-        if (source) {
-          if (source.observers) {
-            source.observers.push(this);
-          } else {
-            source.observers = [this];
-          }
+    for (let i = 0; i < this.sources.length; i++) {
+      const source = this.sources[i];
+      if (source) {
+        if (source.observers) {
+          source.observers.push(this);
+        } else {
+          source.observers = [this];
         }
       }
     }
@@ -137,11 +135,11 @@ export function createDerived<T>(fn: () => T, label?: string): Derived<T> {
   return new Derived(fn, label);
 }
 
-function createLogger(label?: string): (...data: Array<unknown>) => void {
-  return (...data: Array<unknown>) => {
-    console.log(label ? `[${label}]` : '', ...data);
-  };
-}
+// function createLogger(label?: string): (...data: Array<unknown>) => void {
+//   return (...data: Array<unknown>) => {
+//     console.log(label ? `[${label}]` : '', ...data);
+//   };
+// }
 
 export function isDerived(v: unknown): v is Derived<unknown> {
   return v instanceof Derived;
