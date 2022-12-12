@@ -14,7 +14,7 @@ import {
   type STATUS,
 } from './state.js';
 import type { ReactiveFunction, ReactiveValue } from './types.js';
-import { unlinkObservers } from './utils.js';
+import { assert, unlinkObservers } from './utils.js';
 
 // Derived
 export class Derived<T> {
@@ -49,7 +49,9 @@ export class Derived<T> {
         // each source until we find one that is dirty. If we end up validating a source as dirty,
         // it'll mark us as dirty as well, so we immediately break and proceed to recomputing.
         for (let i = 0; i < sources.length; i++) {
-          sources[i]?.validate();
+          const source = sources[i];
+          assert(source !== undefined, 'source is undefined');
+          source.validate();
           // Have to recast here because `validate` might end up changing the status to something
           // besides STALE
           if ((this.status as STATUS) === DIRTY) {

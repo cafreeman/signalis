@@ -29,7 +29,7 @@ function spliceWhenKnown<T>(array: Array<T>, target: T): Array<T> {
   return array;
 }
 
-function assert(condition: any, msg?: string): asserts condition {
+export function assert(condition: any, msg?: string): asserts condition {
   if (!condition) {
     throw new Error(msg);
   }
