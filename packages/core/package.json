@@ -17,18 +17,20 @@
     }
   },
   "scripts": {
-    "prepublish": "rimraf dist && pnpm run build && pnpm run build:types",
+    "prepublish": "pnpm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "dev": "vitest",
-    "build": "vite build",
+    "build": "rimraf dist && pnpm run build:js && pnpm run build:types",
+    "build:js": "vite build",
     "build:types": "tsc -p tsconfig.build.json"
   },
   "keywords": [],
   "author": "Chris Freeman",
   "license": "MIT",
   "devDependencies": {
+    "@rollup/plugin-strip": "^3.0.1",
     "@types/lodash": "^4.14.189",
     "lodash": "^4.17.21",
     "p-defer": "^4.0.0"

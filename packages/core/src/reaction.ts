@@ -1,26 +1,27 @@
-import type { Derived } from './derived.js';
-import type { Signal } from './signal.js';
 import {
-  type STATUS,
-  DIRTY,
-  STALE,
   CLEAN,
-  setupCurrentContext,
+  DIRTY,
   getCurrentContext,
   getRunningComputation,
+  NOTCLEAN,
+  scheduleReaction,
   setCurrentContext,
   setRunningComputation,
+  STALE,
+  type STATUS,
 } from './state.js';
-import { validate } from './utils.js';
+import type { ReactiveFunction, ReactiveValue } from './types.js';
+import { unlinkObservers } from './utils.js';
+
+const ReactionTag = Symbol('Reaction');
 
 export class Reaction {
-  readonly type = 'reaction';
-
-  sources: Set<Signal<unknown> | Derived<unknown>> | null = null;
-  observers = null;
+  readonly type = ReactionTag;
+  sources: Array<ReactiveValue> | null = null;
+  observers: Array<ReactiveFunction> | null = null;
   fn: () => void;
   cleanupFn?: () => void;
-  status: STATUS = DIRTY;
+  status: STATUS = CLEAN;
   isDisposed = false;
 
   constructor(fn: () => void, cleanup?: () => void) {
@@ -38,13 +39,28 @@ export class Reaction {
     const prevContext = getCurrentContext();
     const prevComputation = getRunningComputation();
 
-    const context = setupCurrentContext(this);
+    const context: Array<ReactiveValue> = [];
+    setCurrentContext(context);
     setRunningComputation(this);
+
+    unlinkObservers(this);
 
     try {
       trapFn();
     } finally {
       this.sources = context;
+
+      for (let i = 0; i < this.sources.length; i++) {
+        const source = this.sources[i];
+        if (source) {
+          if (source.observers) {
+            source.observers.push(this);
+          } else {
+            source.observers = [this];
+          }
+        }
+      }
+
       setCurrentContext(prevContext);
       setRunningComputation(prevComputation);
     }
@@ -55,9 +71,10 @@ export class Reaction {
       return;
     }
     if (this.status === STALE) {
-      if (this.sources) {
-        for (const source of this.sources) {
-          validate(source);
+      const { sources } = this;
+      if (sources) {
+        for (let i = 0; i < sources.length; i++) {
+          sources[i]?.validate();
           // Have to recast here because `validate` might end up changing the status to something
           // besides STALE
           if ((this.status as STATUS) === DIRTY) {
@@ -83,13 +100,23 @@ export class Reaction {
     const prevContext = getCurrentContext();
     const prevComputation = getRunningComputation();
 
-    setupCurrentContext(this);
+    const context: Array<ReactiveValue> = [];
+    setCurrentContext(context);
     setRunningComputation(this);
 
     this.fn();
 
     setCurrentContext(prevContext);
     setRunningComputation(prevComputation);
+  }
+
+  markUpdate(status: NOTCLEAN) {
+    // CLEAN < STALE < DIRTY
+    if (this.status < status) {
+      scheduleReaction(this);
+
+      this.status = status;
+    }
   }
 
   dispose() {
@@ -100,6 +127,6 @@ export class Reaction {
   }
 }
 
-export function isReaction(v: Derived<unknown> | Reaction): v is Reaction {
-  return v.type === 'reaction';
+export function isReaction(v: any): v is Reaction {
+  return v.type === ReactionTag;
 }

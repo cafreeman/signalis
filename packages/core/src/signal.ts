@@ -1,6 +1,6 @@
 import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
-import { DIRTY, markDependency, markUpdate, runReactions } from './state.js';
+import { DIRTY, markDependency, markUpdates, runReactions } from './state.js';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
@@ -12,11 +12,14 @@ function neverEqual(): boolean {
   return false;
 }
 
+const SignalTag = Symbol('Signal');
+
 // Signal
 export class _Signal<T> {
+  readonly type = SignalTag;
   _value: T;
   _isEqual: Equality<T>;
-  observers: Set<Derived<unknown> | Reaction> | null = null;
+  observers: Array<Derived<unknown> | Reaction> | null = null;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this._value = value;
@@ -28,6 +31,9 @@ export class _Signal<T> {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  validate() {}
+
   get value() {
     markDependency(this);
     return this._value;
@@ -36,7 +42,7 @@ export class _Signal<T> {
   set value(newValue: T) {
     if (!this._isEqual(this._value, newValue)) {
       this._value = newValue;
-      markUpdate(this, DIRTY);
+      markUpdates(this, DIRTY);
       runReactions();
     }
   }
@@ -62,4 +68,8 @@ export function createSignal<T extends {}>(
   } else {
     return new _Signal(value, isEqual);
   }
+}
+
+export function isSignal(v: any): v is Signal<unknown> {
+  return v.type === SignalTag;
 }
