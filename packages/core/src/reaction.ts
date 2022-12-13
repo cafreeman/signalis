@@ -13,8 +13,10 @@ import {
 import type { ReactiveFunction, ReactiveValue } from './types.js';
 import { unlinkObservers } from './utils.js';
 
+const ReactionTag = Symbol('Reaction');
+
 export class Reaction {
-  readonly type = 'reaction';
+  readonly type = ReactionTag;
   sources: Array<ReactiveValue> | null = null;
   observers: Array<ReactiveFunction> | null = null;
   fn: () => void;
@@ -125,6 +127,6 @@ export class Reaction {
   }
 }
 
-export function isReaction(v: ReactiveFunction): v is Reaction {
-  return v.type === 'reaction';
+export function isReaction(v: any): v is Reaction {
+  return v.type === ReactionTag;
 }

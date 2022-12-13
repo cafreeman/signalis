@@ -12,9 +12,11 @@ function neverEqual(): boolean {
   return false;
 }
 
+const SignalTag = Symbol('Signal');
+
 // Signal
 export class _Signal<T> {
-  readonly type = 'signal';
+  readonly type = SignalTag;
   _value: T;
   _isEqual: Equality<T>;
   observers: Array<Derived<unknown> | Reaction> | null = null;
@@ -68,6 +70,6 @@ export function createSignal<T extends {}>(
   }
 }
 
-export function isSignal(v: unknown): v is Signal<unknown> {
-  return v instanceof _Signal;
+export function isSignal(v: any): v is Signal<unknown> {
+  return v.type === SignalTag;
 }

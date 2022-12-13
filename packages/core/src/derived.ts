@@ -16,9 +16,11 @@ import {
 import type { ReactiveFunction, ReactiveValue } from './types.js';
 import { assert, unlinkObservers } from './utils.js';
 
+const DerivedTag = Symbol('Derived');
+
 // Derived
 export class Derived<T> {
-  readonly type = 'derived';
+  readonly type = DerivedTag;
 
   computeFn: () => T;
   lastValue?: T;
@@ -143,6 +145,6 @@ export function createDerived<T>(fn: () => T, label?: string): Derived<T> {
 //   };
 // }
 
-export function isDerived(v: unknown): v is Derived<unknown> {
-  return v instanceof Derived;
+export function isDerived(v: any): v is Derived<unknown> {
+  return v.type === DerivedTag;
 }
