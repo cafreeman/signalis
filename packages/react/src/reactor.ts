@@ -1,6 +1,8 @@
 import { Reaction } from '@signalis/core';
 import { type FunctionComponent, useEffect, useRef, useState } from 'react';
 
+const Empty = [] as const;
+
 function useSignalis<T>(renderFn: () => T): T {
   const [, setState] = useState();
   const forceUpdate = () => {
@@ -26,10 +28,10 @@ function useSignalis<T>(renderFn: () => T): T {
       forceUpdate();
     }
     return () => {
-      reactionRef.current?.dispose();
+      reactionRef.current!.dispose();
       reactionRef.current = null;
     };
-  }, []);
+  }, Empty);
 
   let rendered!: T;
 
