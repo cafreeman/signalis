@@ -120,6 +120,7 @@ export class Reaction {
   }
 
   dispose() {
+    unlinkObservers(this);
     this.isDisposed = true;
     if (this.cleanupFn) {
       this.cleanupFn();
