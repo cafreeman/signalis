@@ -22,31 +22,42 @@ const DerivedTag = Symbol('Derived');
 export class Derived<T> {
   readonly type = DerivedTag;
 
-  computeFn: () => T;
-  lastValue?: T;
-  status: STATUS = DIRTY;
-  label: string;
+  private _computeFn: () => T;
+  private _lastValue?: T;
+  private _status: STATUS = DIRTY;
+
+  /**
+   * @internal
+   */
+  _label: string;
   // logger: (...data: Array<unknown>) => void;
 
-  observers: Array<ReactiveFunction> | null = null;
-  sources: Array<ReactiveValue> | null = null;
+  /**
+   * @internal
+   */
+  _observers: Array<ReactiveFunction> | null = null;
+
+  /**
+   * @internal
+   */
+  _sources: Array<ReactiveValue> | null = null;
 
   constructor(fn: () => T, label?: string) {
-    this.computeFn = fn;
-    this.label = label ?? '';
+    this._computeFn = fn;
+    this._label = label ?? '';
     // this.logger = createLogger(label);
   }
 
   get value(): T {
     markDependency(this);
     this.validate();
-    return this.lastValue as T;
+    return this._lastValue as T;
   }
 
   validate(): void {
-    if (this.sources) {
-      const { sources } = this;
-      if (this.status === STALE) {
+    if (this._sources) {
+      const { _sources: sources } = this;
+      if (this._status === STALE) {
         // if we're stale, we know that we *might* need to recompute, so we call `validate` on
         // each source until we find one that is dirty. If we end up validating a source as dirty,
         // it'll mark us as dirty as well, so we immediately break and proceed to recomputing.
@@ -56,7 +67,7 @@ export class Derived<T> {
           source.validate();
           // Have to recast here because `validate` might end up changing the status to something
           // besides STALE
-          if ((this.status as STATUS) === DIRTY) {
+          if ((this._status as STATUS) === DIRTY) {
             break;
           }
         }
@@ -80,11 +91,11 @@ export class Derived<T> {
       }
     }
 
-    if (this.status === DIRTY) {
+    if (this._status === DIRTY) {
       this.compute();
     }
 
-    this.status = CLEAN;
+    this._status = CLEAN;
   }
 
   compute(): void {
@@ -97,17 +108,17 @@ export class Derived<T> {
 
     unlinkObservers(this);
 
-    const result = this.computeFn();
+    const result = this._computeFn();
 
-    this.sources = context;
+    this._sources = context;
 
-    for (let i = 0; i < this.sources.length; i++) {
-      const source = this.sources[i];
+    for (let i = 0; i < this._sources.length; i++) {
+      const source = this._sources[i];
       if (source) {
-        if (source.observers) {
-          source.observers.push(this);
+        if (source._observers) {
+          source._observers.push(this);
         } else {
-          source.observers = [this];
+          source._observers = [this];
         }
       }
     }
@@ -115,20 +126,20 @@ export class Derived<T> {
     setCurrentContext(prevContext);
     setRunningComputation(prevComputation);
 
-    if (result !== this.lastValue) {
+    if (result !== this._lastValue) {
       markUpdates(this, DIRTY);
-      this.lastValue = result;
+      this._lastValue = result;
     }
   }
 
   markUpdate(status: NOTCLEAN) {
     // CLEAN < STALE < DIRTY
-    if (this.status < status) {
-      this.status = status;
+    if (this._status < status) {
+      this._status = status;
 
-      if (this.observers) {
-        for (let i = 0; i < this.observers.length; i++) {
-          this.observers[i]?.markUpdate(STALE);
+      if (this._observers) {
+        for (let i = 0; i < this._observers.length; i++) {
+          this._observers[i]?.markUpdate(STALE);
         }
       }
     }

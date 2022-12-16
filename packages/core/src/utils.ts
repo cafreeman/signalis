@@ -3,16 +3,16 @@ import type { Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
 
 export function unlinkObservers(target: Derived<unknown> | Reaction) {
-  const { sources } = target;
+  const { _sources: sources } = target;
   if (!sources) {
     return;
   }
   for (let i = 0; i < sources.length; i++) {
     const source = sources[i] as Signal<unknown> | Derived<unknown>;
-    if (!source.observers) {
+    if (!source._observers) {
       return;
     }
-    spliceWhenKnown(source.observers, target);
+    spliceWhenKnown(source._observers, target);
   }
 }
 
