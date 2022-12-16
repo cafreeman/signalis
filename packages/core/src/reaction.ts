@@ -17,18 +17,32 @@ const ReactionTag = Symbol('Reaction');
 
 export class Reaction {
   readonly type = ReactionTag;
-  sources: Array<ReactiveValue> | null = null;
-  observers: Array<ReactiveFunction> | null = null;
-  fn: () => void;
-  cleanupFn?: () => void;
+  /**
+   * @internal
+   */
+  _sources: Array<ReactiveValue> | null = null;
+
+  /**
+   * @internal
+   */
+  _observers: Array<ReactiveFunction> | null = null;
+
+  private _fn: () => void;
+
+  private _cleanupFn?: () => void;
+
+  /**
+   * @internal
+   */
   status: STATUS = CLEAN;
+
   isDisposed = false;
 
   constructor(fn: () => void, cleanup?: () => void) {
-    this.fn = fn;
+    this._fn = fn;
 
     if (cleanup) {
-      this.cleanupFn = cleanup;
+      this._cleanupFn = cleanup;
     }
   }
 
@@ -48,15 +62,15 @@ export class Reaction {
     try {
       trapFn();
     } finally {
-      this.sources = context;
+      this._sources = context;
 
-      for (let i = 0; i < this.sources.length; i++) {
-        const source = this.sources[i];
+      for (let i = 0; i < this._sources.length; i++) {
+        const source = this._sources[i];
         if (source) {
-          if (source.observers) {
-            source.observers.push(this);
+          if (source._observers) {
+            source._observers.push(this);
           } else {
-            source.observers = [this];
+            source._observers = [this];
           }
         }
       }
@@ -71,7 +85,7 @@ export class Reaction {
       return;
     }
     if (this.status === STALE) {
-      const { sources } = this;
+      const { _sources: sources } = this;
       if (sources) {
         for (let i = 0; i < sources.length; i++) {
           sources[i]?.validate();
@@ -104,12 +118,15 @@ export class Reaction {
     setCurrentContext(context);
     setRunningComputation(this);
 
-    this.fn();
+    this._fn();
 
     setCurrentContext(prevContext);
     setRunningComputation(prevComputation);
   }
 
+  /**
+   * @internal
+   */
   markUpdate(status: NOTCLEAN) {
     // CLEAN < STALE < DIRTY
     if (this.status < status) {
@@ -119,11 +136,14 @@ export class Reaction {
     }
   }
 
+  /**
+   * @internal
+   */
   dispose() {
     unlinkObservers(this);
     this.isDisposed = true;
-    if (this.cleanupFn) {
-      this.cleanupFn();
+    if (this._cleanupFn) {
+      this._cleanupFn();
     }
   }
 }

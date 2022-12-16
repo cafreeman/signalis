@@ -17,9 +17,12 @@ const SignalTag = Symbol('Signal');
 // Signal
 export class _Signal<T> {
   readonly type = SignalTag;
-  _value: T;
-  _isEqual: Equality<T>;
-  observers: Array<Derived<unknown> | Reaction> | null = null;
+  private _value: T;
+  private _isEqual: Equality<T>;
+  /**
+   * @internal
+   */
+  _observers: Array<Derived<unknown> | Reaction> | null = null;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this._value = value;
