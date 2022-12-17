@@ -1,9 +1,9 @@
 import { Reaction } from './reaction.js';
 
-export function createEffect(fn: () => void, cleanup?: () => void): () => void {
+export function createEffect(fn: () => void | (() => void)): () => void {
   const effect = new Reaction(function (this: Reaction) {
-    this.trap(fn);
-  }, cleanup);
+    return this.trap(fn);
+  });
 
   effect.compute();
 
