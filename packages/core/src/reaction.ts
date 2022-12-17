@@ -17,6 +17,7 @@ const ReactionTag = Symbol('Reaction');
 
 export class Reaction {
   readonly type = ReactionTag;
+  private _initialized = false;
   /**
    * @internal
    */
@@ -27,7 +28,7 @@ export class Reaction {
    */
   _observers: Array<ReactiveFunction> | null = null;
 
-  private _fn: () => void;
+  private _fn: () => void | (() => void);
 
   private _cleanupFn?: () => void;
 
@@ -38,11 +39,12 @@ export class Reaction {
 
   isDisposed = false;
 
-  constructor(fn: () => void, cleanup?: () => void) {
+  constructor(fn: () => void | (() => void), cleanup?: () => void) {
     this._fn = fn;
 
     if (cleanup) {
       this._cleanupFn = cleanup;
+      this._initialized = true;
     }
   }
 
@@ -60,7 +62,7 @@ export class Reaction {
     unlinkObservers(this);
 
     try {
-      trapFn();
+      return trapFn();
     } finally {
       this._sources = context;
 
@@ -73,10 +75,9 @@ export class Reaction {
             source._observers = [this];
           }
         }
+        setCurrentContext(prevContext);
+        setRunningComputation(prevComputation);
       }
-
-      setCurrentContext(prevContext);
-      setRunningComputation(prevComputation);
     }
   }
 
@@ -107,7 +108,7 @@ export class Reaction {
     this.status = CLEAN;
   }
 
-  compute() {
+  compute(): void | (() => void) {
     if (this.isDisposed) {
       return;
     }
@@ -118,10 +119,22 @@ export class Reaction {
     setCurrentContext(context);
     setRunningComputation(this);
 
-    this._fn();
-
-    setCurrentContext(prevContext);
-    setRunningComputation(prevComputation);
+    try {
+      if (this._initialized) {
+        this._fn();
+      } else {
+        // If this is our first compute, we check to see if the callback returns a cleanup function
+        // and save it if so, then mark the instance as initialized so we don't check any further
+        const cleanupFn = this._fn();
+        if (cleanupFn) {
+          this._cleanupFn = cleanupFn;
+        }
+        this._initialized = true;
+      }
+    } finally {
+      setCurrentContext(prevContext);
+      setRunningComputation(prevComputation);
+    }
   }
 
   /**

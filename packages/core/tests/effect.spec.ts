@@ -171,15 +171,17 @@ describe('Effect', () => {
 
     let didCleanup = false;
 
-    const effectSpy = vi.fn(() => {
-      foo.value;
-    });
-
     const cleanupSpy = vi.fn(() => {
       didCleanup = true;
     });
 
-    const dispose = createEffect(effectSpy, cleanupSpy);
+    const effectSpy = vi.fn(() => {
+      foo.value;
+
+      return cleanupSpy;
+    });
+
+    const dispose = createEffect(effectSpy);
 
     foo.value++;
 
