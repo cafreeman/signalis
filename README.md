@@ -57,7 +57,7 @@ notifier.value = null; // will notify again
 
 ## Derived
 
-As you may have already realized, a `Signal` on its own isn't very useful without something that reacts to it. This is where `Derived` comes in. `Derived` is a _readonly_ reactive value that, as its name might suggest, is derived from one or more _other_ reactive values (which can be `Signal`s, other `Derived`, or a combination of both). The value of a `Derived` will update any time of its dependents change, and it will also notify its own dependents whenever _it_ changes.
+As you may have already realized, a `Signal` on its own isn't very useful without something that reacts to it. This is where `Derived` comes in. `Derived` is a _readonly_ reactive value that, as its name might suggest, is derived from one or more _other_ reactive values (which can be `Signal`s, other `Derived`, or a combination of both). The value of a `Derived` will update any time one of its dependents change, and it will also notify its own dependents whenever _it_ changes.
 
 To create a `Derived`, use `createDerived`:
 
@@ -85,7 +85,7 @@ firstName.value = 'Christopher';
 fullNameBUTYELLING.value; // 'CHRISTOPHER FREEMAN!!!!!!!!!!!!!'
 ```
 
-In order to avoid doing any unnecessary work, `Derived` is very clever about when it should actually recompute. It will _never_ recompute just because one of its sources changed. Something else has to first try and read its `value` property beore it will even consider recomputing. Once something does access its `value`, `Derived` follows the heuristic below to determine if it should actually recompute:
+In order to avoid doing any unnecessary work, `Derived` is very clever about when it should actually recompute. It will _never_ recompute just because one of its sources changed. Something else has to first try and read its `value` property before it will even consider recomputing. Once something does access its `value`, `Derived` follows the heuristic below to determine if it should actually recompute:
 
 - Have any of its _direct_ dependencies changed?
   - If so, this is the most certain we can be that value of the `Derived` has also changed, so recompute immediately.
@@ -142,11 +142,11 @@ Effects are useful any time you need to perform some kind of action in response 
 
 To create an effect, use `createEffect`:
 
-### `createEffect(fn: () => void, cleanup?: () => void): () => void`
+### `createEffect(fn: () => void | (() => void)): () => void`
 
 `createEffect` takes a callback that reads some number of reactive values and does something with them. The callback should not return a value (it _can_ return a value, but `signalis` won't do anything with it since effects aren't mean to represent values). `createEffect` returns a disposal function that can be called if/when you no longer need the effect anymore
 
-By default, the disposal function will simply disable the effect and remove it from the reactivity tree, but you can also add additional cleanup behavior by passing a second argument to `createEffect` that contains whatever action you'd like to run when the effect is disposed.
+By default, the disposal function will simply disable the effect and remove it from the reactivity tree, but you can also add additional cleanup behavior by return a function from the callback that contains whatever action you'd like to run when the effect is disposed.
 
 Effects have a wide range of uses, let's take a look at a few examples.
 
@@ -208,4 +208,42 @@ count.value = 1; // logs again
 dispose(); // logs the clean up message
 
 count.value = 2; // no log, since the effect is disposed now
+```
+
+Finally, we can return a function from the callback to customize our effect's cleanup behavior:
+
+```ts
+function createTimer() {
+  const time = createSignal(0);
+
+  let interval;
+
+  const dispose = createEffect(() => {
+    console.log(time.value);
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+      console.log('Stopped!');
+    };
+  });
+
+  return {
+    start() {
+      interval = setInterval(() => {
+        time.value++;
+      });
+    },
+    stop() {
+      dispose();
+    },
+  };
+}
+
+const timer = createTimer();
+
+timer.start(); // effect starts logging every second, 1...2...3...4...etc.
+
+timer.stop(); // interval gets cleared, the effect is cleaned up, and it logs 'Stopped!'
 ```
