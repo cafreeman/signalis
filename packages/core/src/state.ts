@@ -19,6 +19,7 @@ class State {
   scheduledReactions: Array<Reaction> = [];
   pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
   batchCount = 0;
+  suspended = false;
 }
 
 const STATE = new State();
@@ -58,6 +59,9 @@ export function batchCount(): number {
 }
 
 export function markDependency(v: ReactiveValue): void {
+  if (STATE.suspended) {
+    return;
+  }
   if (STATE.currentContext) {
     STATE.currentContext.push(v);
   }
@@ -85,7 +89,9 @@ export function markUpdates(source: ReactiveValue, status: NOTCLEAN): void {
 }
 
 export function scheduleReaction(reaction: Reaction): void {
-  if (!STATE.runningComputation) {
+  if (STATE.scheduledReactions.includes(reaction)) {
+    return;
+  } else {
     STATE.scheduledReactions.push(reaction);
   }
 }
@@ -122,4 +128,12 @@ export function checkPendingUpdate(
   }
 
   return update;
+}
+
+export function suspendTracking() {
+  STATE.suspended = true;
+}
+
+export function resumeTracking() {
+  STATE.suspended = false;
 }

@@ -60,14 +60,17 @@ export class _Signal<T> {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Signal<T> extends Omit<_Signal<T>, '_isEqual'> {}
 
-export function createSignal(value?: null | undefined): Signal<unknown>;
-export function createSignal<T extends {}>(value: T, isEqual?: Equality<T> | false): Signal<T>;
-export function createSignal<T extends {}>(
+export function createSignal(): Signal<unknown>;
+export function createSignal<T>(value: T, isEqual?: Equality<T> | false): Signal<T>;
+export function createSignal<T>(
   value?: T | null | undefined,
   isEqual?: Equality<T> | false
 ): Signal<T> | Signal<unknown> {
-  if (arguments.length === 0 || value == null) {
+  if (arguments.length === 0) {
     return new _Signal(null, neverEqual);
+  }
+  if (value == null) {
+    return new _Signal(value);
   } else {
     return new _Signal(value, isEqual);
   }
