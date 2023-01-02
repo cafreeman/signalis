@@ -89,7 +89,9 @@ export function markUpdates(source: ReactiveValue, status: NOTCLEAN): void {
 }
 
 export function scheduleReaction(reaction: Reaction): void {
-  if (!STATE.runningComputation) {
+  if (STATE.scheduledReactions.includes(reaction)) {
+    return;
+  } else {
     STATE.scheduledReactions.push(reaction);
   }
 }
