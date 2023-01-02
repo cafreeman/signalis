@@ -19,6 +19,7 @@ class State {
   scheduledReactions: Array<Reaction> = [];
   pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
   batchCount = 0;
+  suspended = false;
 }
 
 const STATE = new State();
@@ -58,6 +59,9 @@ export function batchCount(): number {
 }
 
 export function markDependency(v: ReactiveValue): void {
+  if (STATE.suspended) {
+    return;
+  }
   if (STATE.currentContext) {
     STATE.currentContext.push(v);
   }
@@ -122,4 +126,12 @@ export function checkPendingUpdate(
   }
 
   return update;
+}
+
+export function suspendTracking() {
+  STATE.suspended = true;
+}
+
+export function resumeTracking() {
+  STATE.suspended = false;
 }
