@@ -194,14 +194,13 @@ Since effects compute eagerly, it's important that we provide a way to clean the
 ```ts
 const count = createSignal(0);
 
-const dispose = createEffect(
-  () => {
-    console.log(`count.value is: ${count.value}`);
-  },
-  () => {
+const dispose = createEffect(() => {
+  console.log(`count.value is: ${count.value}`);
+
+  return () => {
     console.log(`cleaning up! no more messages!`);
-  }
-); // logs the count immediately
+  };
+}); // logs the count immediately
 
 count.value = 1; // logs again
 
@@ -247,3 +246,43 @@ timer.start(); // effect starts logging every second, 1...2...3...4...etc.
 
 timer.stop(); // interval gets cleared, the effect is cleaned up, and it logs 'Stopped!'
 ```
+
+## Resources
+
+A `Resource` is a reactive abstraction built to help developers incorporate asynchronous values into reactive systems. Signalis' `Resource` is heavily inspired by [resources in `SolidJS`](https://www.solidjs.com/docs/latest/api#createresource), though its API is quite a bit different.
+
+`Resource` comes in two flavors:
+
+- A standalone reactive async request
+- A reactive async request that depends on another reactive value
+
+A `Resource` exposes four pieces of state:
+
+- `value`: `Signal<ValueType | undefined>` - The value of the most recent async request (this is the most up to date value)
+- `last`: `ValueType | undefined` - The value of the previous run of the async request
+- `loading`: `Signal<boolean>` - Whether or not the `Resource` is currently in the process of fetching
+- `error`: `Signal<unknown>` - A `Signal` whose value will be populated with the contents of an error that is caught during the fetcher's execution.
+
+### `createResource<ValueType>(fetcher: () => Promise<ValueType>): Resource<ValueType>`
+
+The single argument version of `createResource` accepts a function that performs some kind of async operation and returns a `Promise`. When the `Resource` is created, it will invoke the `fetcher` function and then updates the `Resource`'s `value` property once the async request is complete. `Resource` also has a `refetch` method that will re-run the `fetcher` function and trigger updates to the `Resource`'s reactive properties accordingly
+
+```ts
+const postResource = createResource(() => fetch('myUrl.com').then((res) => res.json()));
+
+let error = '';
+let content = '';
+
+if (postResource.loading.value) {
+  content = 'loading';
+} else if (postResource.error.value) {
+  error = postResource.error.value;
+} else {
+  content = postResource.value;
+}
+
+// run the fetch request again
+postResource.refetch();
+```
+
+### `createResource<SourceType, ValueType>(source: Signal<SourceType> | Derived<SourceType>, fetcher: (source: SourceType) => Promise<ValueType>): ResourceWithSource<ValueType, SourceType>`
