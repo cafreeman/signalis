@@ -3,3 +3,4 @@ export { createDerived, type Derived } from './derived.js';
 export { createEffect } from './effect.js';
 export { batch } from './batch.js';
 export { Reaction } from './reaction.js';
+export { createResource, type Resource, type ResourceWithSource } from './resource.js';
