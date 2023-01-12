@@ -3,7 +3,7 @@ import { createSignal, Signal } from './signal.js';
 import type { ReactiveValue } from './types.js';
 import { untrack } from './untrack.js';
 
-type Fetcher<ValueType> = (source: true) => Promise<ValueType>;
+type Fetcher<ValueType> = () => Promise<ValueType>;
 type FetcherWithSource<SourceType, ValueType> = (source: SourceType) => Promise<ValueType>;
 
 export class Resource<ValueType> {
@@ -19,6 +19,10 @@ export class Resource<ValueType> {
     this.fetch();
   }
 
+  get value() {
+    return this.current.value;
+  }
+
   private async fetch() {
     this.loading.value = true;
 
@@ -27,7 +31,7 @@ export class Resource<ValueType> {
       // with both the previous result (if any) *and* the new value *or* error, and never
       // end up just throwing away data.
       this.last = untrack(() => this.current.value);
-      this.current.value = await this.fetcher(true);
+      this.current.value = await this.fetcher();
     } catch (err: unknown) {
       this.error.value = err;
     } finally {
@@ -35,8 +39,8 @@ export class Resource<ValueType> {
     }
   }
 
-  get value() {
-    return this.current.value;
+  refetch() {
+    this.fetch();
   }
 }
 
