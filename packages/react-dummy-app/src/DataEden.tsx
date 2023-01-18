@@ -13,7 +13,7 @@ const cachedFetch = buildCachedFetch();
 
 const DisplayPersonBase = () => {
   const [loading, setLoading] = useState(false);
-  const [person, setPerson] = useState();
+  const [person, setPerson] = useState<Person>();
 
   useEffect(() => {
     setLoading(true);
