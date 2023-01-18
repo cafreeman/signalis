@@ -11,7 +11,8 @@
     "test": "pnpm -r test",
     "build": "pnpm build:ts && pnpm build:types",
     "build:ts": "pnpm --filter core --filter react run build",
-    "build:types": "pnpm --filter core --filter react run build:types"
+    "build:types": "pnpm --filter core --filter react run build:types",
+    "release": "pnpm -r public --access public"
   },
   "keywords": [],
   "author": "Chris Freeman",

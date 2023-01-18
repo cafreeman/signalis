@@ -9,14 +9,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@data-eden/cache": "^0.2.2-beta.1",
+    "@data-eden/network": "^0.2.2-beta.1",
+    "@signalis/core": "workspace:*",
+    "@signalis/react": "workspace:*",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@signalis/react": "workspace:*"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.24",
     "@types/react-dom": "^18.0.8",
     "@vitejs/plugin-react": "^2.2.0",
+    "miragejs": "^0.1.47",
     "typescript": "^4.6.4",
     "vite": "^3.2.3"
   }
