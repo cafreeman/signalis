@@ -1,13 +1,15 @@
-import Counter from './Counter';
+// import Counter from './Counter';
 // import Stopwatch from './Stopwatch';
-import Basic from './Basic';
+// import Basic from './Basic';
+import DataExample from './DataEden';
 
 function App() {
   return (
     <div>
-      <Counter></Counter>
+      {/* <Counter></Counter> */}
       {/* <Stopwatch /> */}
       {/* <Basic></Basic> */}
+      <DataExample />
     </div>
   );
 }
