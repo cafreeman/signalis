@@ -1,4 +1,4 @@
-import { createDerived, createSignal, createEffect } from '@signalis/core';
+import { createDerived, createSignal } from '@signalis/core';
 import { reactor, useSignalEffect } from '@signalis/react';
 import { useEffect } from 'react';
 

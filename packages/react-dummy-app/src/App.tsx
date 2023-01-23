@@ -1,5 +1,5 @@
 // import Counter from './Counter';
-// import Stopwatch from './Stopwatch';
+import Stopwatch from './Stopwatch';
 // import Basic from './Basic';
 import DataExample from './DataEden';
 
@@ -7,9 +7,9 @@ function App() {
   return (
     <div>
       {/* <Counter></Counter> */}
-      {/* <Stopwatch /> */}
+      <Stopwatch />
       {/* <Basic></Basic> */}
-      <DataExample />
+      {/* <DataExample /> */}
     </div>
   );
 }
