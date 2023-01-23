@@ -1,27 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { buildCachedFetch } from './fetch';
-import { reactor } from '@signalis/react';
-import { makeServer } from './server';
 
 interface Person {
   name: string;
 }
 
-makeServer();
+const useCachedFetch = buildCachedFetch();
 
-const cachedFetch = buildCachedFetch();
-
-const DisplayPersonBase = () => {
-  const [loading, setLoading] = useState(false);
-  const [person, setPerson] = useState<Person>();
+const DisplayPerson = () => {
+  const { fetch, data: person, loading } = useCachedFetch<Person>();
 
   useEffect(() => {
-    setLoading(true);
-    cachedFetch('/api/users/1')
-      .then((res) => {
-        setPerson(res);
-      })
-      .finally(() => setLoading(false));
+    fetch('/api/users/1');
   }, []);
 
   return (
@@ -33,19 +23,17 @@ const DisplayPersonBase = () => {
   );
 };
 
-DisplayPersonBase.displayName = 'DisplayPerson';
-
-const DisplayPerson = reactor(DisplayPersonBase);
-
-const UpdatePersonBase = () => {
+const UpdatePerson = () => {
   const [inputValue, setInputValue] = useState('');
 
   function handleInputChange(e: React.FormEvent<HTMLInputElement>) {
     setInputValue(e.currentTarget.value);
   }
 
+  const { fetch } = useCachedFetch();
+
   function handleSubmit() {
-    cachedFetch('/api/users/1', {
+    fetch('/api/users/1', {
       method: 'PUT',
       body: JSON.stringify({ name: inputValue }),
     }).then(() => {
@@ -64,12 +52,7 @@ const UpdatePersonBase = () => {
   );
 };
 
-UpdatePersonBase.displayName = 'UpdatePerson';
-
-const UpdatePerson = reactor(UpdatePersonBase);
-// const UpdatePerson = UpdatePersonBase;
-
-function DataExample() {
+function App() {
   return (
     <div>
       <DisplayPerson />
@@ -78,4 +61,4 @@ function DataExample() {
   );
 }
 
-export default DataExample;
+export default App;
