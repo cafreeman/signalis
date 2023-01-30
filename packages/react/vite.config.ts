@@ -9,7 +9,7 @@ export default defineConfig({
       fileName: 'signalis-react',
     },
     rollupOptions: {
-      external: ['react', 'react-dom', '@signalis/core'],
+      external: ['react', 'react-dom'],
     },
   },
   plugins: [],

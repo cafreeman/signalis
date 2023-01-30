@@ -1,5 +1,4 @@
-import { createDerived, createSignal } from '@signalis/core';
-import { reactor, useSignalEffect } from '@signalis/react';
+import { createDerived, createSignal, reactor, useSignalEffect } from '@signalis/react';
 import { useEffect } from 'react';
 
 function createStopwatch() {

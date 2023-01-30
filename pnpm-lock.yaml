@@ -76,8 +76,9 @@ importers:
       jsdom: ^20.0.3
       react: ^18.2.0
       react-dom: ^18.2.0
-    devDependencies:
+    dependencies:
       '@signalis/core': link:../core
+    devDependencies:
       '@testing-library/react': 13.4.0_biqbaboplfbrettd7655fr4n2y
       '@types/react': 18.0.25
       '@types/react-dom': 18.0.9
@@ -87,7 +88,6 @@ importers:
 
   packages/react-dummy-app:
     specifiers:
-      '@signalis/core': workspace:*
       '@signalis/react': workspace:*
       '@types/react': ^18.0.24
       '@types/react-dom': ^18.0.8
@@ -96,7 +96,6 @@ importers:
       react-dom: ^18.2.0
       vite: ^3.2.3
     dependencies:
-      '@signalis/core': link:../core
       '@signalis/react': link:../react
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
