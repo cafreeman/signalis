@@ -1,0 +1,36 @@
+{
+  "name": "@data-eden/network",
+  "version": "0.3.2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/data-eden/data-eden.git",
+    "directory": "packages/network"
+  },
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "typings": "./dist/index.d.ts",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@data-eden/shared-test-utilities": "0.3.2",
+    "cross-fetch": "^3.1.5"
+  },
+  "volta": {
+    "extends": "../../package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

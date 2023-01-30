@@ -1,0 +1,28 @@
+function combine(next, middleware) {
+    return async (request) => {
+        return middleware(request, next);
+    };
+}
+function globalFetch(request) {
+    return fetch(request);
+}
+/**
+ *
+ * @param middlewares {Middleware[]} array of middlewares
+ * @param options {BuildFetchOptions=} optional options for overriding buildFetch configuration
+ * @returns Fetch
+ */
+export function buildFetch(middlewares, options) {
+    if (typeof fetch === 'undefined') {
+        throw new Error("@data-eden/network requires `fetch` to be available on`globalThis`. Did you forget to setup `cross-fetch/polyfill` before calling @data-eden/network's `buildFetch`?");
+    }
+    const _fetch = options?.fetch || globalFetch;
+    const curriedMiddlewares = [...middlewares]
+        .reverse()
+        .reduce(combine, _fetch);
+    return async (rawRequest, init) => {
+        const normalizedRequest = new Request(rawRequest, init);
+        return curriedMiddlewares(normalizedRequest);
+    };
+}
+//# sourceMappingURL=fetch.js.map
