@@ -28,9 +28,10 @@
   "keywords": [],
   "author": "Chris Freeman",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "@signalis/core": "workspace:*"
+  },
   "devDependencies": {
-    "@signalis/core": "workspace:*",
     "@testing-library/react": "^13.4.0",
     "@types/react": "^18.0.25",
     "@types/react-dom": "^18.0.9",
@@ -40,7 +41,6 @@
   },
   "peerDependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@signalis/core": "workspace:*"
+    "react-dom": "^18.2.0"
   }
 }
