@@ -18,6 +18,7 @@
   "author": "Chris Freeman",
   "license": "MIT",
   "devDependencies": {
+    "@changesets/cli": "^2.26.0",
     "@tsconfig/node-lts-strictest": "^18.12.1",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
