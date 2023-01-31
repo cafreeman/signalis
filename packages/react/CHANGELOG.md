@@ -1,5 +1,13 @@
 # @signalis/react
 
+## 0.0.6
+
+### Patch Changes
+
+- d01828f: Add README for each individual package
+- Updated dependencies [d01828f]
+  - @signalis/core@0.0.9
+
 ## 0.0.5
 
 ### Patch Changes
