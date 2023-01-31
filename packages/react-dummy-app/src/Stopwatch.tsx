@@ -47,7 +47,27 @@ function Stopwatch() {
     console.log(timer.value);
   });
 
-  return <div>{timer.value}</div>;
+  return (
+    <div>
+      <div>{timer.value}</div>
+
+      <button
+        type="button"
+        className="p-2 border rounded bg-red-500 text-white"
+        onClick={() => stop()}
+      >
+        Stop
+      </button>
+
+      <button
+        type="button"
+        className="p-2 border rounded bg-green-700 text-white"
+        onClick={() => start()}
+      >
+        Start
+      </button>
+    </div>
+  );
 }
 
 export default reactor(Stopwatch);
