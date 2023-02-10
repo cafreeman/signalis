@@ -62,7 +62,11 @@ export function markDependency(v: ReactiveValue): void {
   if (STATE.suspended) {
     return;
   }
+
   if (STATE.currentContext) {
+    if (STATE.currentContext.includes(v)) {
+      return;
+    }
     STATE.currentContext.push(v);
   }
 }
