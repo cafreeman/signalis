@@ -1,14 +1,15 @@
-// import Counter from './Counter';
+import Counter from './Counter';
 import Stopwatch from './Stopwatch';
-// import Basic from './Basic';
+import TodoList from './todos/TodoList';
+import Basic from './Basic';
 
 function App() {
   return (
     <div>
       {/* <Counter></Counter> */}
-      <Stopwatch />
+      {/* <Stopwatch /> */}
+      <TodoList />
       {/* <Basic></Basic> */}
-      {/* <DataExample /> */}
     </div>
   );
 }
