@@ -4,3 +4,4 @@ export { createEffect } from './effect.js';
 export { batch } from './batch.js';
 export { Reaction, isReaction } from './reaction.js';
 export { createResource, type Resource, type ResourceWithSource } from './resource.js';
+export { createStore } from './store.js';
