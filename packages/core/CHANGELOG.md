@@ -1,5 +1,11 @@
 # @signalis/core
 
+## 0.0.10
+
+### Patch Changes
+
+- 215ba20: dedupe compute contexts
+
 ## 0.0.9
 
 ### Patch Changes
