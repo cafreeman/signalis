@@ -1,5 +1,12 @@
 # @signalis/react
 
+## 0.0.7
+
+### Patch Changes
+
+- Updated dependencies [215ba20]
+  - @signalis/core@0.0.10
+
 ## 0.0.6
 
 ### Patch Changes
