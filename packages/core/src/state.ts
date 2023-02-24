@@ -15,6 +15,7 @@ export type NOTCLEAN = Exclude<STATUS, CLEAN>;
 
 class State {
   currentContext: Context | null = null;
+  currentContextIndex = 0;
   runningComputation: ReactiveFunction | null = null;
   scheduledReactions: Array<Reaction> = [];
   pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
@@ -31,6 +32,14 @@ export function getCurrentContext(): Context | null {
 
 export function setCurrentContext(context: Context | null): void {
   STATE.currentContext = context;
+}
+
+export function getContextIndex(): number {
+  return STATE.currentContextIndex;
+}
+
+export function setContextIndex(v: number): void {
+  STATE.currentContextIndex = v;
 }
 
 export function getRunningComputation(): ReactiveFunction | null {
@@ -63,11 +72,46 @@ export function markDependency(v: ReactiveValue): void {
     return;
   }
 
-  if (STATE.currentContext) {
-    if (STATE.currentContext.includes(v)) {
-      return;
+  /**
+   This algorithm is borrowed directly from https://github.com/modderme123/reactively/commit/fde309bb2966e5d382868169f9b8905532596ec5#diff-f63fb32fca85d8e177d6400ce078818a4815b80ac7a3319b60d3507354890992R90-R101
+   It allows us to track minimize the amount of work we need to on subsequent runs of a
+   computation by comparing a computation's pre-existing sources with the current source in
+   the order in which they are referenced.
+
+   `currentContextIndex` tracks the number of sources we've encountered in a given computation and
+   maps it to an array index that we can use to compare against the computation's existing sources.
+   For example, when we run a computation and call `.value` on a ReactiveValue for the first time,
+   currentContextIndex will be 0. We'll then look to see if the 0-index of the running computation's
+   existing sources is that same on the ReactiveValue we've just encountered. If it is, we know
+   the relationship between this computation and it's first source hasn't changed, so we can just
+   leave it there in the first position and increment `currentContextIndex` to indicate that
+   we should look at index 1 the next time we encounter a source during this computation.
+
+   The first time the sources at the current index don't match, we set the current context to a new
+   array and push all subsequent sources into it. This means that, at the end of a computation, we
+   have two pieces of data:
+   1. The index of the computation's sources array where the dependencies between runs diverged
+   2. A list of all the new sources that need to be added to that computation starting after the
+   point where they diverged.
+
+   Using these two pieces of data, we can update a computation's dependencies with the least amount
+   of work possible, so we know how many sources we can re-use between runs and only have to account
+   for the sources that have changed.
+   **/
+  if (STATE.runningComputation) {
+    if (
+      !STATE.currentContext &&
+      STATE.runningComputation._sources &&
+      STATE.runningComputation._sources[STATE.currentContextIndex] == v
+    ) {
+      STATE.currentContextIndex++;
+    } else {
+      if (STATE.currentContext) {
+        STATE.currentContext.push(v);
+      } else {
+        STATE.currentContext = [v];
+      }
     }
-    STATE.currentContext.push(v);
   }
 }
 
