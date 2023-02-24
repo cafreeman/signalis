@@ -26,7 +26,11 @@
     "build:js": "vite build",
     "build:types": "tsc -p tsconfig.build.json"
   },
-  "keywords": [],
+  "keywords": [
+    "reactivity",
+    "signal",
+    "reactive"
+  ],
   "author": "Chris Freeman",
   "license": "MIT",
   "devDependencies": {
