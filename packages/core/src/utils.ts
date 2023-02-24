@@ -2,6 +2,10 @@ import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
 import type { Signal } from './signal.js';
 
+// Remove a given ReactiveFunction from all of its sources' observer arrays. In essence, this breaks
+// the link between a ReactiveFunction and all of its sources. We use this to "reset" a
+// ReactiveFunction's dependencies prior to re-computing it in order to ensure that we don't
+// leak dependencies between computations
 export function unlinkObservers(target: Derived<unknown> | Reaction) {
   const { _sources: sources } = target;
   if (!sources) {

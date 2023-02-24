@@ -71,11 +71,9 @@ export function markDependency(v: ReactiveValue): void {
   }
 }
 
-function runUpdatesForObserver(source: ReactiveValue, status: NOTCLEAN) {
-  if (source._observers) {
-    for (let i = 0; i < source._observers.length; i++) {
-      source._observers[i]?.markUpdate(status);
-    }
+function runUpdatesForObserver(observers: Array<ReactiveFunction>, status: NOTCLEAN) {
+  for (let i = 0; i < observers.length; i++) {
+    observers[i]?.markUpdate(status);
   }
 }
 
@@ -83,11 +81,10 @@ function runUpdatesForObserver(source: ReactiveValue, status: NOTCLEAN) {
 // the status update will instead be deferred until the batch is done.
 export function markUpdates(source: ReactiveValue, status: NOTCLEAN): void {
   if (source._observers) {
-    const inBatch = batchCount() !== 0;
-    if (inBatch) {
-      STATE.pendingUpdates.set(source, () => runUpdatesForObserver(source, status));
+    if (batchCount() !== 0) {
+      STATE.pendingUpdates.set(source, () => runUpdatesForObserver(source._observers!, status));
     } else {
-      runUpdatesForObserver(source, status);
+      runUpdatesForObserver(source._observers, status);
     }
   }
 }
