@@ -1,5 +1,14 @@
 # @signalis/react
 
+## 0.0.8
+
+### Patch Changes
+
+- 9d54f25: add `createStore` and update package keywords
+- Updated dependencies [9d54f25]
+- Updated dependencies [6d4bb23]
+  - @signalis/core@0.0.11
+
 ## 0.0.7
 
 ### Patch Changes

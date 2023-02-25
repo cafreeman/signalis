@@ -1,5 +1,12 @@
 # react-dummy-app
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [9d54f25]
+  - @signalis/react@0.0.8
+
 ## 0.0.4
 
 ### Patch Changes

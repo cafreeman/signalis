@@ -1,5 +1,12 @@
 # @signalis/core
 
+## 0.0.11
+
+### Patch Changes
+
+- 9d54f25: add `createStore` and update package keywords
+- 6d4bb23: optimize dependency reconciliation
+
 ## 0.0.10
 
 ### Patch Changes
