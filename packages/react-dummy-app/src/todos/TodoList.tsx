@@ -8,7 +8,7 @@ interface TodoItemProps {
   handleRemove: (id: number) => void;
 }
 
-function TodoItem({ todo, handleCheck, handleRemove }: TodoItemProps) {
+const TodoItem = reactor(({ todo, handleCheck, handleRemove }: TodoItemProps) => {
   const toggleCheckbox = () => {
     handleCheck(todo.id);
   };
@@ -49,7 +49,9 @@ function TodoItem({ todo, handleCheck, handleRemove }: TodoItemProps) {
       </div>
     </li>
   );
-}
+});
+
+TodoItem.displayName = 'TodoItem';
 
 interface StatusPickerItemProps {
   status: string;
@@ -138,16 +140,16 @@ NewTodo.displayName = 'NewTodo';
 function TodoList() {
   const currentStatus = useSignal('All');
 
-  const todosList = useDerived(() => {
+  const todoList = useDerived(() => {
     if (currentStatus.value === 'Incomplete') {
-      return store.todos.value.filter((todo) => !todo.complete);
+      return store.todos.filter((todo) => !todo.complete);
     }
 
     if (currentStatus.value === 'Complete') {
-      return store.todos.value.filter((todo) => todo.complete);
+      return store.todos.filter((todo) => todo.complete);
     }
 
-    return store.todos.value;
+    return store.todos;
   });
 
   const toggleComplete = (id: number) => store.toggleComplete(id);
@@ -162,7 +164,7 @@ function TodoList() {
         updateStatus={(status: string) => (currentStatus.value = status)}
       />
       <ul className="pt-4">
-        {todosList.value.map((todo) => {
+        {todoList.value.map((todo) => {
           return (
             <TodoItem
               key={todo.id}

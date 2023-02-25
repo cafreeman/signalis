@@ -317,6 +317,69 @@ if (postResource.loading.value) {
 postResource.refetch();
 ```
 
+## Stores
+
+While the primitives covered above can technically cover all of the use cases for reactivity that you might encounter, having to call `.value` on every single read or write of every `Signal` or `Derived` can become a bit cumbersome, especially if you're trying to model more complicated states. In cases where you need highly nested reactivity, you'll likely that find that a `Store` is a more ergonomic solution.
+
+Stores are objects (or arrays!) that have been wrapped in a Proxy that lazily wraps the object's properties in Signals as they are accessed. This gives you more fine-grained reactivity than you would get by simply wrapping an entire object in a Signal, while also making it easier to work with by calling `.value` on each read and write behind the scenes so you don't have to.
+
+### `createStore<T extends object>(v: T | Store<T>): Store<T>`
+
+To create a Store, simply pass an object or array to `createStore`. Once you have a Store, any time you access one of its properties, the store will make it reactive and give you the value. Note that this only works for JS primitives (e.g. strings, numbers, booleans, etc.) and regular objects and arrays.
+
+`createStore` also handles `this` binding for you, which means that you can define getters and methods on the object being passed into the store and they'll work like you'd expect (see the example below for an example of what this looks like).
+
+### `update<T extends object>(base: T, recipe: (draft: T) => void): T`
+
+While property access on `stores` behaves just like it would with a normal POJO or array, the process of writing to the store is a bit different. Stores can't be mutated
+directly, and will throw an error if you try. This is because Signalis needs to do some careful bookkeeping behind the scenes to make sure that store changes correctly trigger updates to all the other reactive entities that observe it.
+
+To update a store, Signalis provides an `update` function that behaves similarly to both [Immer's `produce`](https://immerjs.github.io/immer/) and [Solid's `produce`](https://www.solidjs.com/docs/latest/api#produce) (_Note: you will find that stores in general are similar to Solid's stores. This is because our stores are heavily inspired by the great work Solid has already done!_). `update` takes two arguments: the store you want to update, and a callback that receives a draft version of the store and executes all of the changes you want to make. Unlike `produce`, however, `update` mutates the store for you, you don't need to actually do anything the result of calling `update`. All of the changes you make to the draft in the callback will be reflected in the store when `update` is finished running. That said, `update` still does return the updated store itself in case you would like to use the result yourself.
+
+For example, let's say we wanted to model a classic todo list. Here's what it would look with raw Signals vs. a Store:
+
+```ts
+// with signals
+const todos = createSignal([]);
+const todoCount = createDerived(() => todos.length);
+const todoStore = createSignal({
+  todos,
+  todoCount,
+});
+
+// add a todo
+todoStore.todos.value = [
+  ...todoStore.todos.value,
+  createSignal({ id: '1', text: 'Use a store for this' }),
+];
+
+// get all todo names
+todoStore.todos.value.map((todo) => todo.value.text);
+
+// with a Store
+const todoStore = createStore({
+  todos: [],
+
+  // we can define getters and method right on the store and `createStore` which will make sure
+  // they're bound correctly
+  get todoCount() {
+    return this.todos.length;
+  },
+
+  addTodo(newTodo) {
+    // Since every reactive property in a store is also a Store, you can pick properties off the
+    // root store and pass them to `update` just like you would any other Store.
+    update(this.todos, (draft) => {
+      draft.push(newTodo);
+    });
+  },
+
+  listTodoNames() {
+    this.todos.map((todo) => todo.text);
+  },
+});
+```
+
 ## Utility functions
 
 ### `isSignal(v: any): v is Signal<unknown>`

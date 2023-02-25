@@ -2,6 +2,7 @@
   "extends": "@tsconfig/node-lts-strictest",
   "compilerOptions": {
     "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedIndexedAccess": false,
     "sourceMap": true,
     "target": "ESNext",
     "module": "Node16",
