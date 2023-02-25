@@ -1,17 +1,19 @@
 import {
   CLEAN,
   DIRTY,
+  getContextIndex,
   getCurrentContext,
   getRunningComputation,
   NOTCLEAN,
   scheduleReaction,
+  setContextIndex,
   setCurrentContext,
   setRunningComputation,
   STALE,
   type STATUS,
 } from './state.js';
-import type { ReactiveFunction, ReactiveValue } from './types.js';
-import { unlinkObservers } from './utils.js';
+import type { ReactiveValue } from './types.js';
+import { reconcileSources, unlinkObservers } from './utils.js';
 
 const ReactionTag = Symbol('Reaction');
 
@@ -22,11 +24,6 @@ export class Reaction {
    * @internal
    */
   _sources: Array<ReactiveValue> | null = null;
-
-  /**
-   * @internal
-   */
-  _observers: Array<ReactiveFunction> | null = null;
 
   private _fn: () => void | (() => void);
 
@@ -48,36 +45,28 @@ export class Reaction {
     }
   }
 
-  trap(trapFn: () => void) {
+  trap(trapFn: () => void | (() => void)) {
     if (this.isDisposed) {
       return;
     }
     const prevContext = getCurrentContext();
+    const prevContextIndex = getContextIndex();
     const prevComputation = getRunningComputation();
 
-    const context: Array<ReactiveValue> = [];
-    setCurrentContext(context);
+    setCurrentContext(null);
+    setContextIndex(0);
     setRunningComputation(this);
 
-    unlinkObservers(this);
-
     try {
-      return trapFn();
-    } finally {
-      this._sources = context;
+      const cleanupFn = trapFn();
 
-      for (let i = 0; i < this._sources.length; i++) {
-        const source = this._sources[i];
-        if (source) {
-          if (source._observers) {
-            source._observers.push(this);
-          } else {
-            source._observers = [this];
-          }
-        }
-        setCurrentContext(prevContext);
-        setRunningComputation(prevComputation);
-      }
+      reconcileSources(this);
+
+      return cleanupFn;
+    } finally {
+      setCurrentContext(prevContext);
+      setContextIndex(prevContextIndex);
+      setRunningComputation(prevComputation);
     }
   }
 
@@ -113,10 +102,11 @@ export class Reaction {
       return;
     }
     const prevContext = getCurrentContext();
+    const prevContextIndex = getContextIndex();
     const prevComputation = getRunningComputation();
 
-    const context: Array<ReactiveValue> = [];
-    setCurrentContext(context);
+    setCurrentContext(null);
+    setContextIndex(0);
     setRunningComputation(this);
 
     try {
@@ -133,6 +123,7 @@ export class Reaction {
       }
     } finally {
       setCurrentContext(prevContext);
+      setContextIndex(prevContextIndex);
       setRunningComputation(prevComputation);
     }
   }

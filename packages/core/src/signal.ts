@@ -19,6 +19,7 @@ export class _Signal<T> {
   readonly type = SignalTag;
   private _value: T;
   private _isEqual: Equality<T>;
+
   /**
    * @internal
    */

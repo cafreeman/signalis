@@ -3,18 +3,20 @@ import {
   checkPendingUpdate,
   CLEAN,
   DIRTY,
+  getContextIndex,
   getCurrentContext,
   getRunningComputation,
   markDependency,
   markUpdates,
   NOTCLEAN,
+  setContextIndex,
   setCurrentContext,
   setRunningComputation,
   STALE,
   type STATUS,
 } from './state.js';
 import type { ReactiveFunction, ReactiveValue } from './types.js';
-import { assert, unlinkObservers } from './utils.js';
+import { assert, reconcileSources } from './utils.js';
 
 const DerivedTag = Symbol('Derived');
 
@@ -35,12 +37,12 @@ export class Derived<T> {
   /**
    * @internal
    */
-  _observers: Array<ReactiveFunction> | null = null;
+  _sources: Array<ReactiveValue> | null = null;
 
   /**
    * @internal
    */
-  _sources: Array<ReactiveValue> | null = null;
+  _observers: Array<ReactiveFunction> | null = null;
 
   constructor(fn: () => T, label?: string) {
     this._computeFn = fn;
@@ -100,30 +102,19 @@ export class Derived<T> {
 
   compute(): void {
     const prevContext = getCurrentContext();
+    const prevContextIndex = getContextIndex();
     const prevComputation = getRunningComputation();
 
-    const context: Array<ReactiveValue> = [];
-    setCurrentContext(context);
+    setCurrentContext(null);
+    setContextIndex(0);
     setRunningComputation(this);
-
-    unlinkObservers(this);
 
     const result = this._computeFn();
 
-    this._sources = context;
-
-    for (let i = 0; i < this._sources.length; i++) {
-      const source = this._sources[i];
-      if (source) {
-        if (source._observers) {
-          source._observers.push(this);
-        } else {
-          source._observers = [this];
-        }
-      }
-    }
+    reconcileSources(this);
 
     setCurrentContext(prevContext);
+    setContextIndex(prevContextIndex);
     setRunningComputation(prevComputation);
 
     if (result !== this._lastValue) {
