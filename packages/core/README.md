@@ -291,8 +291,10 @@ The two-argument version of `createResource` allows you to designate a reactive 
 
 ```ts
 const pageNumber = createSignal(false);
-const postResource = createResource((pageNumber: number) =>
-  fetch(`api.com/posts/${pageNumber}`).then((res) => res.json())
+const postResource = createResource(
+  pageNumber,
+  (pageNumber: number) =>
+    fetch(`api.com/posts/${pageNumber}`).then((res) => res.json())
 );
 
 // No HTTP request has happened yet since `pageNumber` is false.
