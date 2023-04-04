@@ -1,4 +1,4 @@
-import { Signal, createSignal } from './signal.js';
+import { type Signal, createSignal } from './signal.js';
 
 export type NotWrappable = string | number | bigint | symbol | boolean | null | undefined;
 

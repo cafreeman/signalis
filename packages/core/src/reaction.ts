@@ -4,7 +4,7 @@ import {
   getContextIndex,
   getCurrentContext,
   getRunningComputation,
-  NOTCLEAN,
+  type NOTCLEAN,
   scheduleReaction,
   setContextIndex,
   setCurrentContext,

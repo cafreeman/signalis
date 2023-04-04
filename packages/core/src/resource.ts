@@ -1,5 +1,5 @@
 import { createEffect } from './effect.js';
-import { createSignal, Signal } from './signal.js';
+import { createSignal, type Signal } from './signal.js';
 import type { ReactiveValue } from './types.js';
 import { untrack } from './untrack.js';
 

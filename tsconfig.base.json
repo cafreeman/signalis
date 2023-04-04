@@ -1,5 +1,5 @@
 {
-  "extends": "@tsconfig/node-lts-strictest",
+  "extends": ["@tsconfig/node-lts", "@tsconfig/strictest"],
   "compilerOptions": {
     "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
