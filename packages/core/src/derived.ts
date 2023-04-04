@@ -8,7 +8,7 @@ import {
   getRunningComputation,
   markDependency,
   markUpdates,
-  NOTCLEAN,
+  type NOTCLEAN,
   setContextIndex,
   setCurrentContext,
   setRunningComputation,
