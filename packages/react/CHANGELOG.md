@@ -1,5 +1,12 @@
 # @signalis/react
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies [f947bab]
+  - @signalis/core@0.0.12
+
 ## 0.0.8
 
 ### Patch Changes

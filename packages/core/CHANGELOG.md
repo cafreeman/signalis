@@ -1,5 +1,11 @@
 # @signalis/core
 
+## 0.0.12
+
+### Patch Changes
+
+- f947bab: Handle frozen objects when unwrapping stores
+
 ## 0.0.11
 
 ### Patch Changes
