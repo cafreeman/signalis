@@ -258,13 +258,25 @@ describe('store', () => {
   });
 
   describe('unwrap', () => {
-    test('it works', () => {
+    test('maintains referential equality with regular object', () => {
       const base = {
         foo: 'foo',
       };
       const store = createStore(base);
       const unwrapped = unwrap(store);
       expect(unwrapped === base).toBe(true);
+      expect(unwrapped.foo).toEqual('foo');
+    });
+
+    test('does not maintain referential equality with frozen object, but still unwraps', () => {
+      const base = {
+        foo: 'foo',
+      };
+      Object.freeze(base);
+      const store = createStore(base);
+      const unwrapped = unwrap(store);
+      expect(unwrapped === base).toBe(false);
+      expect(unwrapped.foo).toEqual('foo');
     });
   });
 
@@ -368,6 +380,51 @@ describe('store', () => {
       });
 
       expect(store.bar).not.toHaveProperty('name');
+    });
+
+    test('with frozen object', () => {
+      const obj1 = {
+        value: 0,
+      };
+
+      const obj2 = {
+        value: 1,
+      };
+
+      Object.freeze(obj1);
+      Object.freeze(obj2);
+
+      const store = createStore({
+        state: obj1,
+      });
+
+      expect(store.state).toEqual(obj1);
+
+      update(store, (draft) => {
+        draft.state = obj2;
+      });
+
+      expect(store.state).toEqual(obj2);
+    });
+
+    test('with frozen array', () => {
+      const arr1 = [1, 2, 3];
+      const arr2 = [1, 2, 3];
+
+      Object.freeze(arr1);
+      Object.freeze(arr2);
+
+      const store = createStore({
+        state: arr1,
+      });
+
+      expect(store.state).toEqual(arr1);
+
+      update(store, (draft) => {
+        draft.state = arr2;
+      });
+
+      expect(store.state).toEqual(arr2);
     });
   });
 });
