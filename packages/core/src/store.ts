@@ -218,7 +218,7 @@ function wrap<T extends StoreNode>(v: T): T {
 // to the original object that was passed to `createStore`
 export function unwrap<T>(v: T, set?: Set<unknown>): T;
 export function unwrap<T>(v: any, set = new Set()): T {
-  let len, value, key: keyof typeof v;
+  let len, value, key: keyof typeof v, unwrapped;
   if (v != null && v[$RAW]) {
     return v[$RAW];
   }
@@ -229,22 +229,31 @@ export function unwrap<T>(v: any, set = new Set()): T {
     return v;
   }
 
-  // Track this value as having already been seen so we don't blow up if we encounter a cycle
-  set.add(v);
-
   // unwrap each member of an array or object and replace it in the original object (this is how
   // we maintain reference stability)
   if (Array.isArray(v)) {
+    if (Object.isFrozen(v)) {
+      v = v.slice(0);
+    } else {
+      set.add(v);
+    }
+
     len = v.length;
+
     for (let i = 0; i < len; i++) {
       value = v[i];
 
-      const unwrapped = unwrap(value, set);
+      unwrapped = unwrap(value, set);
       if (unwrapped !== value) {
         v[i] = unwrapped;
       }
     }
   } else {
+    if (Object.isFrozen(v)) {
+      v = Object.assign({}, v);
+    } else {
+      set.add(v);
+    }
     const keys = Object.keys(v);
     const descriptors = Object.getOwnPropertyDescriptors(v);
 
@@ -253,7 +262,7 @@ export function unwrap<T>(v: any, set = new Set()): T {
       key = keys[i];
       if (!isGetter(descriptors[key])) {
         value = v[key];
-        const unwrapped = unwrap(value, set);
+        unwrapped = unwrap(value, set);
         if (unwrapped !== value) {
           v[key] = unwrapped;
         }
