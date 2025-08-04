@@ -56,7 +56,7 @@ const handler: ProxyHandler<FunctionComponent<any>> = {
 
 function createProxyComponent<T>(component: FunctionComponent<T>) {
   const proxyComponent = new Proxy(component, handler);
-  ProxyStore.set(proxyComponent, proxyComponent);
+  ProxyStore.set(component, proxyComponent);
   return proxyComponent;
 }
 
