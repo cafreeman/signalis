@@ -1,5 +1,13 @@
 # @signalis/react
 
+## 0.1.1
+
+### Patch Changes
+
+- 6965ccb: fix bug in reactor and bump CI
+- Updated dependencies [6965ccb]
+  - @signalis/core@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
