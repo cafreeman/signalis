@@ -60,9 +60,11 @@ const Counter = () => {
 export default reactor(Counter);
 ```
 
-## `useDerived<T>(fn: () => T): Derived<T>`
+## `useDerived<T>(fn: () => T, deps?: DependencyList): Derived<T>`
 
-Similar to `useSignal`, `useDerived` is used to create a `Derived` inside of a React component. `useDerived` makes use of `useCallback` and `useMemo` to ensure that the underlying `Derived` is only created once and is then re-used on subsequent rerenders.
+Similar to `useSignal`, `useDerived` is used to create a `Derived` inside of a React component. `useDerived` uses `useRef` and `useMemo` to ensure that the underlying `Derived` is only created once and is then re-used on subsequent rerenders.
+
+### Basic Usage
 
 ```jsx
 const Counter = () => {
@@ -84,6 +86,42 @@ const Counter = () => {
 };
 
 export default reactor(Counter);
+```
+
+### Mixed Dependencies
+
+When your derived computation depends on both signals and non-signal values (like props, `useState`, or `useContext`), you must pass those non-signal values in the `deps` array. The derived will recreate when the deps change, and signal reactivity will continue to work automatically.
+
+```jsx
+const ProductPrice = ({ taxRate }) => {
+  const price = useSignal(100);
+  const total = useDerived(() => price.value * (1 + taxRate), [taxRate]);
+  // Updates when taxRate prop OR price signal changes
+
+  return (
+    <div>
+      <div>Price: ${price.value}</div>
+      <div>Tax Rate: {taxRate * 100}%</div>
+      <div>Total: ${total.value}</div>
+      <button onClick={() => (price.value += 10)}>Increase Price</button>
+    </div>
+  );
+};
+
+export default reactor(ProductPrice);
+```
+
+**Important:** Just like with `useEffect`, you must include all non-signal dependencies in the `deps` array. If you forget to include a prop, state, or context value that your derived uses, it will have a stale closure and won't see updates to that value.
+
+```jsx
+// ✅ Good: All non-signal dependencies listed
+const total = useDerived(() => price.value * taxRate, [taxRate]);
+
+// ✅ Also good: Signal-only derivations don't need deps
+const doubled = useDerived(() => count.value * 2);
+
+// ❌ Bad: Missing taxRate in deps - will use stale taxRate
+const total = useDerived(() => price.value * taxRate); // taxRate never updates!
 ```
 
 ## `useSignalEffect(fn: () => void | (() => void), deps?: DependencyList): void`

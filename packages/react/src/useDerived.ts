@@ -1,9 +1,20 @@
 import { createDerived, type Derived } from '@signalis/core';
-import { useCallback, useMemo } from 'react';
+import type { DependencyList } from 'react';
+import { useRef, useMemo } from 'react';
 import { EMPTY } from './empty.js';
 
-export function useDerived<T>(fn: () => T): Derived<T> {
-  const factory = useCallback(() => createDerived(fn), EMPTY);
+export function useDerived<T>(fn: () => T, deps: DependencyList = EMPTY): Derived<T> {
+  const derivedRef = useRef<Derived<T> | null>(null);
 
-  return useMemo(factory, EMPTY);
+  // Recreate derived when deps change
+  useMemo(() => {
+    derivedRef.current = createDerived(fn);
+  }, deps);
+
+  // Initialize on first render
+  if (!derivedRef.current) {
+    derivedRef.current = createDerived(fn);
+  }
+
+  return derivedRef.current;
 }
