@@ -12,8 +12,8 @@
     "build": "pnpm build:ts && pnpm build:types",
     "build:ts": "pnpm --filter core --filter react run build",
     "build:types": "pnpm --filter core --filter react run build:types",
-    "version": "pnpm changeset version && pnpm install",
-    "release": "pnpm -r publish --access public"
+    "release": "release-it",
+    "release:dry": "release-it --dry-run"
   },
   "keywords": [],
   "author": "Chris Freeman",
@@ -30,6 +30,7 @@
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.6.2",
+    "release-it": "^19.0.5",
     "rimraf": "^6.0.1",
     "typescript": "^5.9.2",
     "vite": "^7.0.6",

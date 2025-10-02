@@ -1,0 +1,18 @@
+{
+  "git": {
+    "tagName": "v${version}",
+    "push": true,
+    "requireCleanWorkingDir": true
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "before:init": [
+      "pnpm changeset version",
+      "pnpm install",
+      "pnpm build"
+    ],
+    "after:release": "pnpm -r publish --access public"
+  }
+}

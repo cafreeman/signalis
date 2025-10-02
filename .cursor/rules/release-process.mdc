@@ -179,33 +179,60 @@ Before merging:
 
 ## Publishing a Release
 
-### Step 1: Version Bump
+### Automated Release Process (Recommended)
 
-```bash
-pnpm version
-```
-
-This will:
-
-- Read all changesets in `.changeset/`
-- Bump package versions according to semver
-- Update `CHANGELOG.md` files
-- Delete processed changesets
-- Create a commit with version changes
-
-### Step 2: Build Packages
-
-```bash
-pnpm build
-```
-
-### Step 3: Publish to npm
+This project uses **[Release It](https://github.com/release-it/release-it)** for automated versioning, tagging, and publishing:
 
 ```bash
 pnpm release
 ```
 
-This publishes all packages with `--access public`.
+This single command will:
+
+1. **Apply changesets** - Run `pnpm changeset version` to bump versions
+2. **Install dependencies** - Run `pnpm install` to update lockfile
+3. **Build packages** - Run `pnpm build` to compile TypeScript
+4. **Create git tag** - Automatically tag the release (e.g., `v0.2.0`)
+5. **Push to remote** - Push commits and tags to GitHub
+6. **Publish to npm** - Publish packages with `--access public`
+
+### Testing Releases
+
+Before publishing, test the release process:
+
+```bash
+pnpm release:dry
+```
+
+This runs the full process without actually publishing or pushing changes.
+
+### Legacy Manual Process
+
+If needed, the old manual process is still available:
+
+```bash
+# Step 1: Version bump
+pnpm version
+
+# Step 2: Build packages  
+pnpm build
+
+# Step 3: Publish to npm
+pnpm release:legacy
+
+# Step 4: Create and push tag manually
+git tag v$(node -p 'require("./packages/react/package.json").version')
+git push origin --tags
+```
+
+## Release It Configuration
+
+See [.release-it.json](mdc:.release-it.json) for current configuration:
+
+- **Git tagging** - Automatically creates and pushes version tags
+- **Clean working dir** - Requires clean git state before release
+- **Hooks integration** - Runs changesets, build, and publish in sequence
+- **Monorepo support** - Works with pnpm workspaces
 
 ## Changeset Configuration
 
