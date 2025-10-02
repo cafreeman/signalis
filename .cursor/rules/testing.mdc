@@ -1,0 +1,71 @@
+---
+globs: *.spec.ts,*.spec.tsx
+---
+# Testing Guidelines
+
+## Test Framework
+
+- **Test runner**: Vitest
+- **Location**: Tests live in `packages/*/tests/` directories
+- **Naming**: `*.spec.ts` or `*.spec.tsx` for React component tests
+
+## Test Structure
+
+```typescript
+import { expect, describe, test, vi } from 'vitest';
+import { createSignal } from '../src/signal';
+
+describe('Feature Name', () => {
+  test('it does something specific', () => {
+    // Arrange
+    const signal = createSignal(0);
+
+    // Act
+    signal.value = 1;
+
+    // Assert
+    expect(signal.value).toBe(1);
+  });
+});
+```
+
+## Testing Patterns
+
+### Reactivity Testing
+Use spies to verify reactive updates:
+```typescript
+const spy = vi.fn(() => {
+  signal.value;
+});
+
+createEffect(spy);
+
+signal.value = 'new value';
+
+expect(spy).toHaveBeenCalledTimes(2); // Initial + update
+```
+
+### React Component Testing
+- Use `@testing-library/react` for React component tests
+- Test files: `packages/react/tests/*.spec.tsx`
+
+### Async Testing
+- Use `async/await` with Vitest's built-in async support
+- Common patterns for testing resources and async operations
+
+## Test Organization
+
+- **Unit tests**: Test individual primitives in isolation
+- **Integration tests**: Test interactions between primitives
+- **Benchmarks**: Performance tests in `packages/core/tests/bench/`
+
+## Imports in Tests
+
+- Import from source files using relative paths:
+  ```typescript
+  import { createSignal } from '../src/signal';
+  ```
+- Import test utilities from vitest:
+  ```typescript
+  import { expect, describe, test, vi } from 'vitest';
+  ```

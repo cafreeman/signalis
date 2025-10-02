@@ -1,0 +1,40 @@
+---
+alwaysApply: true
+---
+# Signalis Project Structure
+
+This is a monorepo for Signalis, a lightweight reactivity library. The project uses pnpm workspaces.
+
+## Package Architecture
+
+- **`packages/core/`**: Core reactivity primitives (`@signalis/core`)
+  - Main entry: [packages/core/src/index.ts](mdc:packages/core/src/index.ts)
+  - Exports: signals, derived, effects, resources, stores, reactions, batch utilities
+  - Core primitives in [packages/core/src/](mdc:packages/core/src/)
+
+- **`packages/react/`**: React integration (`@signalis/react`)
+  - Main entry: [packages/react/src/index.ts](mdc:packages/react/src/index.ts)
+  - Re-exports all of `@signalis/core` plus React-specific hooks
+  - Key components: reactor HOC, useSignal, useDerived, useSignalEffect
+
+## Key Concepts
+
+### Reactive Primitives
+1. **Signal**: Writable reactive value (see [packages/core/src/signal.ts](mdc:packages/core/src/signal.ts))
+2. **Derived**: Readonly reactive computed value (see [packages/core/src/derived.ts](mdc:packages/core/src/derived.ts))
+3. **Effect**: Reactive side-effect function (see [packages/core/src/effect.ts](mdc:packages/core/src/effect.ts))
+4. **Reaction**: Low-level reactive function primitive (see [packages/core/src/reaction.ts](mdc:packages/core/src/reaction.ts))
+5. **Resource**: Async reactive value (see [packages/core/src/resource.ts](mdc:packages/core/src/resource.ts))
+6. **Store**: Proxy-based fine-grained reactive object (see [packages/core/src/store.ts](mdc:packages/core/src/store.ts))
+
+### Reactivity System
+- **Lazy evaluation**: Derived values only recompute when accessed
+- **Push-pull model**: Changes push notifications, reads pull updates
+- **Dependency tracking**: Automatic tracking via [packages/core/src/state.ts](mdc:packages/core/src/state.ts)
+- All state management happens through the shared state module
+
+## Important Implementation Notes
+
+- **Internal properties**: Use `_` prefix for internal class properties/methods (e.g., `_value`, `_observers`)
+- **Observers pattern**: Reactive primitives maintain `_observers` arrays for dependency tracking
+- **State management**: Central state management in [packages/core/src/state.ts](mdc:packages/core/src/state.ts) handles dirty checking and reaction running

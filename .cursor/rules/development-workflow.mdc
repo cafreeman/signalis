@@ -1,0 +1,78 @@
+---
+alwaysApply: true
+---
+# Development Workflow
+
+## Package Manager
+
+- **Use pnpm**: This project uses pnpm workspaces
+- **Workspace protocol**: Internal dependencies use `workspace:*`
+
+## Common Commands
+
+From the root directory:
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run tests (all packages)
+pnpm test
+
+# Run tests in watch mode (per package)
+cd packages/core && pnpm dev
+
+# Build (all packages)
+pnpm build
+
+# Build TypeScript only
+pnpm build:ts
+
+# Build type declarations
+pnpm build:types
+
+# Lint (all packages)
+pnpm lint
+
+# Lint with auto-fix
+pnpm lint:fix
+
+# Clean build artifacts
+pnpm clean
+```
+
+## Build Configuration
+
+- **Vite**: Used for building both packages (see `vite.config.ts` files)
+- **TypeScript**: Separate build configs per package
+  - `tsconfig.json`: For development and type checking
+  - `tsconfig.build.json`: For building type declarations
+  - See [tsconfig.base.json](mdc:tsconfig.base.json) for shared config
+
+## Package Publishing
+
+- **Changesets**: Uses `@changesets/cli` for version management
+- **Commands**:
+  - `pnpm version`: Update versions via changesets
+  - `pnpm release`: Publish to npm with public access
+
+## Project Configuration
+
+- **mise.toml**: Contains project configuration (see [mise.toml](mdc:mise.toml))
+  - Committed to repository
+  - Should not contain secrets
+
+- **mise.local.toml**: For local secrets and API keys
+  - Not committed (in .gitignore)
+  - Use this for API keys, upload presets, etc.
+
+## Monorepo Structure
+
+- **Root**: Build orchestration, shared configs, shared dependencies
+- **Packages**: Individual publishable packages with their own package.json
+- **Workspace dependencies**: `@signalis/react` depends on `@signalis/core` via `workspace:*`
+
+## Git Workflow
+
+- Don't commit changes unless explicitly asked
+- If asked to interact with GitHub, use the `gh` CLI

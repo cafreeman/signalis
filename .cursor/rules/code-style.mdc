@@ -1,0 +1,64 @@
+---
+alwaysApply: true
+---
+# Code Style Guidelines
+
+## Formatting
+
+- **Trailing commas**: Always use trailing commas in multi-line arrays, objects, function parameters, etc.
+  ```typescript
+  const obj = {
+    foo: 'bar',
+    baz: 'qux',
+  };
+  ```
+
+- **Semicolons**: Use semicolons consistently
+- **Single quotes**: Prefer single quotes for strings (except in JSX)
+- **Template literals**: Use template literals for string interpolation
+
+## Naming Conventions
+
+- **Classes**: PascalCase
+  - Internal implementation classes: Prefix with `_` (e.g., `_Signal`)
+  - Public interfaces: No prefix (e.g., `Signal`)
+
+- **Functions**: camelCase with `create` prefix for factory functions
+  - `createSignal()`, `createDerived()`, `createEffect()`
+
+- **Type guards**: Prefix with `is` (e.g., `isSignal()`, `isDerived()`)
+
+- **Constants**: Use `const` by default
+  - Symbol tags: PascalCase (e.g., `const SignalTag = Symbol('Signal')`)
+
+- **Internal members**: Prefix with `_` for private/internal class properties
+  ```typescript
+  private _value: T;
+  private _isEqual: Equality<T>;
+  _observers: Array<Derived<unknown> | Reaction> | null = null;
+  ```
+
+## Function Design
+
+- **Pure functions**: Derived callbacks should be pure (no side effects)
+- **Factory functions**: Use factory pattern for creating reactive primitives
+- **Disposal pattern**: Functions that need cleanup should return a disposal function
+  ```typescript
+  createEffect(() => {
+    // effect logic
+    return () => {
+      // cleanup
+    };
+  });
+  ```
+
+## Error Handling
+
+- Throw errors for invalid usage or configuration
+- Use descriptive error messages
+
+## Code Organization
+
+- One primary export per file (e.g., `signal.ts` exports `createSignal`)
+- Group related types, interfaces, and implementations together
+- Keep internal utilities at the top of the file before the main export

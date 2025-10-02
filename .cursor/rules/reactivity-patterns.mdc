@@ -1,0 +1,104 @@
+---
+description: Patterns and best practices for working with reactive primitives in Signalis
+---
+# Reactivity Patterns & Best Practices
+
+## Lazy vs. Eager Evaluation
+
+### Derived Values (Lazy)
+- **Never recompute on dependency change alone**
+- Only recompute when `.value` is accessed
+- Check if dependencies changed before recomputing
+- See [packages/core/src/derived.ts](mdc:packages/core/src/derived.ts)
+
+### Effects (Eager)
+- **Recompute immediately on dependency change**
+- Run callback as soon as any dependency updates
+- Use for side effects, not for computing values
+- See [packages/core/src/effect.ts](mdc:packages/core/src/effect.ts)
+
+## Dependency Tracking
+
+All dependency tracking flows through [packages/core/src/state.ts](mdc:packages/core/src/state.ts):
+
+1. **Reading**: `markDependency()` called when `.value` is accessed
+2. **Writing**: `markUpdates()` called when value changes
+3. **Reacting**: `runReactions()` processes pending updates
+
+## Observer Pattern
+
+Reactive primitives maintain observer lists:
+```typescript
+_observers: Array<Derived<unknown> | Reaction> | null = null;
+```
+
+- Signals notify Derived values and Reactions
+- Derived values notify their own observers
+- Reactions trigger re-evaluation
+
+## Equality Checking
+
+Signals support custom equality functions:
+```typescript
+// Default: === comparison
+const signal = createSignal(value);
+
+// Custom equality (e.g., deep equality)
+const signal = createSignal(value, isEqual);
+
+// Always notify (volatile)
+const signal = createSignal(value, false);
+```
+
+## Store Updates
+
+Stores use an Immer-like API via the `update` function:
+```typescript
+update(store, (draft) => {
+  draft.property = newValue;
+  draft.array.push(item);
+});
+```
+
+- Mutations are applied to the original store
+- Updates trigger reactive notifications
+- See [packages/core/src/update.ts](mdc:packages/core/src/update.ts)
+
+## Resource Patterns
+
+### Standalone Resource
+```typescript
+const resource = createResource(() => fetchData());
+```
+
+### Resource with Source
+```typescript
+const id = createSignal(null);
+const resource = createResource(id, (id) => fetchData(id));
+```
+- Fetcher only runs when source is truthy
+- Re-fetches when source changes
+
+## React Integration
+
+### Reactor HOC
+Wrap components to make them reactive:
+```typescript
+export default reactor(MyComponent);
+```
+- Uses Proxy to intercept renders
+- Tracks dependencies automatically
+- Forces re-render on updates
+- See [packages/react/src/reactor.ts](mdc:packages/react/src/reactor.ts)
+
+### Hooks
+- `useSignal()`: Persists signal across renders using `useMemo`
+- `useDerived()`: Persists derived using `useCallback` + `useMemo`
+- `useSignalEffect()`: Reactive effect with React lifecycle cleanup
+
+## Performance Considerations
+
+1. **Minimize unnecessary computations**: Derived values won't recompute if dependencies haven't changed
+2. **Batch updates**: Use `batch()` to group multiple signal updates
+3. **Untrack when needed**: Use `untrack()` to read values without creating dependencies
+4. **Dispose effects**: Always clean up effects when no longer needed
