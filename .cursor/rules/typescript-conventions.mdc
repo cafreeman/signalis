@@ -1,0 +1,59 @@
+---
+globs: *.ts,*.tsx
+---
+# TypeScript Conventions
+
+## Module System & Imports
+
+- **Always use `.js` extensions** in import paths, even for `.ts` files
+  ```typescript
+  // Correct
+  import { createSignal } from './signal.js';
+
+  // Wrong
+  import { createSignal } from './signal';
+  ```
+
+- **Module type**: This project uses ESM modules (`"type": "module"`)
+- **Module resolution**: Uses `Node16` module resolution
+
+## Type Definitions
+
+- **Strict TypeScript**: Extends `@tsconfig/strictest` (see [tsconfig.base.json](mdc:tsconfig.base.json))
+- **Private interface pattern**: For classes with private fields, export a public interface that omits private members
+  ```typescript
+  class _Signal<T> {
+    private _value: T;
+    private _isEqual: Equality<T>;
+  }
+
+  export interface Signal<T> extends Omit<_Signal<T>, '_isEqual'> {}
+  ```
+
+- **Function overloads**: Use multiple signatures for different call patterns
+  ```typescript
+  export function createSignal(): Signal<unknown>;
+  export function createSignal<T>(value: T): Signal<T>;
+  ```
+
+## Type Imports
+
+- Use `type` imports when importing only types:
+  ```typescript
+  import type { Signal } from './signal.js';
+  import type { Derived } from './derived.js';
+  ```
+
+## Generics
+
+- Generic parameters should be descriptive (e.g., `T`, `ValueType`, `SourceType`)
+- Use constraints where appropriate: `T extends {}`
+- Default to `unknown` for values that can be anything
+
+## Comments
+
+- Use `@internal` JSDoc tags for internal APIs not meant for public use
+- Use triple-slash comments for disabling specific linter rules when necessary
+  ```typescript
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  ```
