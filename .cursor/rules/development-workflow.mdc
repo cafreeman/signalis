@@ -1,6 +1,7 @@
 ---
 alwaysApply: true
 ---
+
 # Development Workflow
 
 ## Package Manager
@@ -52,9 +53,7 @@ pnpm clean
 ## Package Publishing
 
 - **Changesets**: Uses `@changesets/cli` for version management
-- **Commands**:
-  - `pnpm version`: Update versions via changesets
-  - `pnpm release`: Publish to npm with public access
+- See [release-process.mdc](mdc:release-process.mdc) for full details on creating changesets, commits, and releases
 
 ## Project Configuration
 
