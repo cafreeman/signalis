@@ -33,11 +33,14 @@ export default reactor(Counter);
 `useSignal` is a React hook for creating a `Signal` inside of a React component. It has the following signatures:
 
 ```ts
+useSignal<T>(initializer: () => T): Signal<T>;
 useSignal(value?: null | undefined): Signal<unknown>;
 useSignal<T extends {}>(value: T): Signal<T>;
 ```
 
 `useSignal` will return a `Signal` just like `createSignal` does, except that it uses `useMemo` under the hood to persist the `Signal` throughout component re-renders.
+
+### Basic Usage
 
 ```jsx
 const Counter = () => {
@@ -60,9 +63,28 @@ const Counter = () => {
 export default reactor(Counter);
 ```
 
-## `useDerived<T>(fn: () => T): Derived<T>`
+### Lazy Initialization
 
-Similar to `useSignal`, `useDerived` is used to create a `Derived` inside of a React component. `useDerived` makes use of `useCallback` and `useMemo` to ensure that the underlying `Derived` is only created once and is then re-used on subsequent rerenders.
+For expensive initial values, use a function initializer to defer computation until the signal is first created. The initializer function runs only once, not on every render:
+
+```jsx
+const DataProcessor = () => {
+  // ✅ Expensive computation only runs once
+  const data = useSignal(() => processLargeDataset());
+
+  return <div>Processed: {data.value.length} items</div>;
+};
+
+export default reactor(DataProcessor);
+```
+
+**Note:** Functions are always treated as initializers (matching React's `useState` pattern).
+
+## `useDerived<T>(fn: () => T, deps?: DependencyList): Derived<T>`
+
+Similar to `useSignal`, `useDerived` is used to create a `Derived` inside of a React component. `useDerived` uses `useRef` and `useMemo` to ensure that the underlying `Derived` is only created once and is then re-used on subsequent rerenders.
+
+### Basic Usage
 
 ```jsx
 const Counter = () => {
@@ -86,9 +108,47 @@ const Counter = () => {
 export default reactor(Counter);
 ```
 
-## `useSignalEffect(fn: () => void | (() => void)): void`
+### Mixed Dependencies
 
-`useSignalEffect` is a hook that allows you to create reactive effects inside of React components. It functions similarly to `useEffect` except that automatically tracks any reactive dependencies and will recompute whenever they change. `useSignalEffect` uses `useEffect` under the hood and returns the underlying effect's cleanup function so it will be automatically cleaned up the same way a regular `useEffect` will.
+When your derived computation depends on both signals and non-signal values (like props, `useState`, or `useContext`), you must pass those non-signal values in the `deps` array. The derived will recreate when the deps change, and signal reactivity will continue to work automatically.
+
+```jsx
+const ProductPrice = ({ taxRate }) => {
+  const price = useSignal(100);
+  const total = useDerived(() => price.value * (1 + taxRate), [taxRate]);
+  // Updates when taxRate prop OR price signal changes
+
+  return (
+    <div>
+      <div>Price: ${price.value}</div>
+      <div>Tax Rate: {taxRate * 100}%</div>
+      <div>Total: ${total.value}</div>
+      <button onClick={() => (price.value += 10)}>Increase Price</button>
+    </div>
+  );
+};
+
+export default reactor(ProductPrice);
+```
+
+**Important:** Just like with `useEffect`, you must include all non-signal dependencies in the `deps` array. If you forget to include a prop, state, or context value that your derived uses, it will have a stale closure and won't see updates to that value.
+
+```jsx
+// ✅ Good: All non-signal dependencies listed
+const total = useDerived(() => price.value * taxRate, [taxRate]);
+
+// ✅ Also good: Signal-only derivations don't need deps
+const doubled = useDerived(() => count.value * 2);
+
+// ❌ Bad: Missing taxRate in deps - will use stale taxRate
+const total = useDerived(() => price.value * taxRate); // taxRate never updates!
+```
+
+## `useSignalEffect(fn: () => void | (() => void), deps?: DependencyList): void`
+
+`useSignalEffect` is a hook that allows you to create reactive effects inside of React components. It functions similarly to `useEffect` except that it automatically tracks any signal dependencies and will recompute whenever they change. `useSignalEffect` uses `useEffect` under the hood and returns the underlying effect's cleanup function so it will be automatically cleaned up the same way a regular `useEffect` will.
+
+### Basic Usage
 
 ```jsx
 const Counter = () => {
@@ -96,7 +156,7 @@ const Counter = () => {
   const isOdd = useDerived(() => count.value % 2 !== 0);
 
   useSignalEffect(() => {
-    // will log every time `isOdd` changes, and will be cleaned up whenever this component is torn down.
+    // Runs on mount and whenever isOdd changes
     console.log(`The count is ${isOdd.value ? 'odd' : 'even'}`);
   });
 
@@ -115,4 +175,49 @@ const Counter = () => {
 };
 
 export default reactor(Counter);
+```
+
+### Mixed Dependencies
+
+When your effect depends on both signals and non-signal values (like props, `useState`, or `useContext`), you must pass those non-signal values in the `deps` array, just like with `useEffect`. The effect will recreate when the deps change, and signal reactivity will continue to work automatically.
+
+```jsx
+const UserProfile = ({ userId }) => {
+  const refreshCount = useSignal(0);
+
+  useSignalEffect(() => {
+    // Effect runs when:
+    // 1. Component mounts
+    // 2. userId prop changes (via deps array)
+    // 3. refreshCount signal changes (via signal reactivity)
+    fetchUserData(userId, refreshCount.value);
+  }, [userId]); // Must include userId in deps!
+
+  return (
+    <div>
+      <button onClick={() => refreshCount.value++}>Refresh</button>
+    </div>
+  );
+};
+
+export default reactor(UserProfile);
+```
+
+**Important:** Just like with `useEffect`, you must include all non-signal dependencies in the `deps` array. If you forget to include a prop, state, or context value that your effect uses, it will have a stale closure and won't see updates to that value.
+
+```jsx
+// ✅ Good: All non-signal dependencies listed
+useSignalEffect(() => {
+  api.call(userId, apiKey, count.value);
+}, [userId, apiKey]);
+
+// ✅ Also good: Signal-only effects don't need deps
+useSignalEffect(() => {
+  console.log(count.value);
+}); // Defaults to [] (runs once on mount, then whenever signals change)
+
+// ❌ Bad: Missing userId in deps - will use stale userId
+useSignalEffect(() => {
+  fetchUser(userId, count.value);
+}); // userId never updates!
 ```

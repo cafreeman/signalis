@@ -1,11 +1,10 @@
 import { createEffect } from '@signalis/core';
-import { useCallback, useEffect } from 'react';
+import type { DependencyList } from 'react';
+import { useEffect } from 'react';
 import { EMPTY } from './empty.js';
 
-export function useSignalEffect(fn: () => void | (() => void)): void {
-  const cachedFn = useCallback(fn, EMPTY);
-
+export function useSignalEffect(fn: () => void | (() => void), deps: DependencyList = EMPTY): void {
   useEffect(() => {
-    return createEffect(() => cachedFn());
-  }, EMPTY);
+    return createEffect(fn);
+  }, deps);
 }

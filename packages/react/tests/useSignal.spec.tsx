@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import { describe, test, expect, afterEach } from 'vitest';
+import { describe, test, expect, afterEach, expectTypeOf } from 'vitest';
 import { useSignal, reactor } from '../src/index.js';
+import type { Signal } from '@signalis/core';
 
 // Test component for useSignal
 function TestUseSignal({ initialValue = 0 }: { initialValue?: number }) {
@@ -92,5 +93,78 @@ describe('useSignal', () => {
     // Update signal again
     fireEvent.click(screen.getByTestId('increment'));
     expect(screen.getByTestId('signal-value').textContent).toBe('3');
+  });
+
+  test('expensive computation without lazy init runs on every render', () => {
+    let computeCount = 0;
+    const expensiveComputation = () => {
+      computeCount++;
+      return 100;
+    };
+
+    function Component({ trigger }: { trigger: number }) {
+      const signal = useSignal(expensiveComputation());
+      return <div data-testid="value">{signal.value}</div>;
+    }
+
+    const Wrapped = reactor(Component);
+    const { rerender } = render(<Wrapped trigger={1} />);
+
+    const initialCount = computeCount;
+    expect(initialCount).toBeGreaterThanOrEqual(1);
+
+    rerender(<Wrapped trigger={2} />);
+    expect(computeCount).toBeGreaterThan(initialCount);
+  });
+
+  test('lazy initializer function only called once', () => {
+    let computeCount = 0;
+
+    function Component({ trigger }: { trigger: number }) {
+      const signal = useSignal(() => {
+        computeCount++;
+        return 100;
+      });
+      return <div data-testid="value">{signal.value}</div>;
+    }
+
+    const Wrapped = reactor(Component);
+    const { rerender } = render(<Wrapped trigger={1} />);
+
+    expect(computeCount).toBe(1);
+
+    rerender(<Wrapped trigger={2} />);
+    expect(computeCount).toBe(1);
+  });
+
+  test('maintains backward compatibility with direct values', () => {
+    function Component() {
+      const signal = useSignal(42);
+      return <div data-testid="value">{signal.value}</div>;
+    }
+
+    const Wrapped = reactor(Component);
+    render(<Wrapped />);
+
+    expect(screen.getByTestId('value').textContent).toBe('42');
+  });
+
+  test('typescript type inference for useSignal', () => {
+    function TypeTestComponent() {
+      const direct = useSignal(42);
+      expectTypeOf(direct).toEqualTypeOf<Signal<number>>();
+
+      const lazy = useSignal(() => 42);
+      expectTypeOf(lazy).toEqualTypeOf<Signal<number>>();
+
+      const noArg = useSignal();
+      expectTypeOf(noArg).toEqualTypeOf<Signal<unknown>>();
+
+      return <div>Types validated</div>;
+    }
+
+    const Wrapped = reactor(TypeTestComponent);
+    render(<Wrapped />);
+    expect(screen.getByText('Types validated')).toBeDefined();
   });
 });

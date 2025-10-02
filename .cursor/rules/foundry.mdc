@@ -1,0 +1,530 @@
+---
+name: 'Foundry MCP Usage Guide'
+description: 'Comprehensive guide for using Foundry MCP tools effectively in AI-assisted development'
+alwaysApply: true
+---
+
+# Foundry MCP Usage Guide for AI Assistants
+
+## Overview
+
+Foundry MCP is a project management tool designed specifically for AI coding assistants. It provides structured project context, specification management, and workflow guidance through a standardized directory structure in `~/.foundry/`.
+
+**Key Principles:**
+
+- **Content Agnostic**: Foundry manages structure, not content opinions
+- **LLM-Driven**: You provide complete content as arguments
+- **User-Controlled**: Users control content, CLI manages structure
+- **Workflow-Aware**: Tools provide next-steps guidance for efficient development
+
+## CRITICAL: Understanding Document Purpose
+
+**These documents serve as COMPLETE CONTEXT for future LLMs and developers**:
+
+- Each document must contain ALL information needed for someone with no prior project knowledge
+- Future LLMs will load these as PRIMARY reference for implementation work
+- Apply "Cold Start Test": Could a skilled developer implement using only this document?
+- Documents must be self-contained with comprehensive architectural and business context
+- Include implementation prerequisites, dependencies, decision rationale, and edge cases
+
+**Document Creation Mindset**:
+- Write for someone who has never seen this project before
+- Include WHY decisions were made, not just WHAT was decided
+- Provide complete technical and business context for implementation
+- Assume the reader needs to understand the full system to implement successfully
+
+## Core Concepts
+
+### Project Structure
+
+Each Foundry project contains:
+
+- **`vision.md`**: High-level product vision and goals (200+ characters, you provide)
+- **`tech-stack.md`**: Technology decisions and architecture (150+ characters, you provide)
+- **`summary.md`**: Concise context for quick LLM consumption (100+ characters, you provide)
+- **`specs/`**: Directory containing timestamped feature specifications
+
+### Specification Structure
+
+Each spec contains:
+
+- **`spec.md`**: Detailed feature requirements, acceptance criteria, implementation approach
+- **`task-list.md`**: Implementation checklist with checkboxes (- [ ] task, - [x] completed)
+- **`notes.md`**: Additional context, design decisions, and implementation notes
+
+## Tool Usage Guidelines
+
+### When to Use Each Tool
+
+#### Project Management
+
+- **`create_project`**: For NEW initiatives requiring full project context
+
+  - When: Starting fresh projects, establishing project foundation
+  - You provide: Complete vision, detailed tech-stack, concise summary
+  - MCP creates: Project directory structure and validates content
+  - MCP Tool Call: `{"name": "create_project", "arguments": {"project_name": "...", "vision": "...", "tech_stack": "...", "summary": "..."}}`
+
+- **`analyze_project`**: For EXISTING codebases you want to manage with Foundry
+
+  - When: Adding Foundry management to projects with existing code
+  - Process: First explore codebase, then provide analyzed vision/tech-stack/summary
+  - Best for: Documentation, structured management of legacy projects
+  - MCP Tool Call: `{"name": "analyze_project", "arguments": {"project_name": "...", "vision": "...", "tech_stack": "...", "summary": "..."}}`
+
+- **`mcp_foundry_load_project`**: For project-wide analysis and context
+  - When: Starting comprehensive work sessions, understanding full project scope
+  - Returns: Project vision, tech-stack, summary, available specs
+  - Use for: Project-wide analysis, architectural decisions, creating multiple specs
+  - Critical: Use this for comprehensive analysis and new feature creation
+  - MCP Tool Call: `{"name": "load_project", "arguments": {"project_name": "..."}}`
+
+#### Specification Management
+
+- **`create_spec`**: Breaking down features into detailed implementation plans
+
+  - When: Starting new features or user stories
+  - You provide: Feature spec, task breakdown, implementation notes
+  - Creates: Timestamped directory (YYYYMMDD_HHMMSS_feature_name)
+  - MCP Tool Call: `{"name": "create_spec", "arguments": {"project_name": "...", "feature_name": "...", "spec": "...", "tasks": "...", "notes": "..."}}`
+
+- **`load_spec`**: Reviewing specifications and checking progress
+
+  - When: Continuing work on existing features, checking task status
+  - Returns: Complete spec content with project context
+  - Supports: Fuzzy matching on feature names (e.g., "auth" matches "user_authentication")
+  - Includes: Project summary automatically for context
+  - MCP Tool Call: `{"name": "load_spec", "arguments": {"project_name": "...", "spec_name": "..."}}`
+
+- **`update_spec`**: Edit spec files using intent-based commands with precise anchors and idempotent updates
+
+  - **File Targets**: `spec` (spec.md), `tasks` (task-list.md), `notes` (notes.md)
+  - **Commands**: Content management (9 operations): Addition (`set_task_status`, `upsert_task`, `append_to_section`), Removal (`remove_list_item`, `remove_from_section`, `remove_section`), Replacement (`replace_list_item`, `replace_in_section`, `replace_section_content`)
+  - **Required Arguments**: `project_name` (string), `spec_name` (string), `commands` (array, non-empty)
+  - **Selectors**: `task_text` (exact checkbox text), `section` (case-insensitive header), `text_in_section` (precise text within sections)
+  - **Usage**:
+
+    ```json
+    {"name":"update_spec","arguments":{"project_name":"project","spec_name":"spec","commands":[
+      {"target":"tasks","command":"set_task_status","selector":{"type":"task_text","value":"Implement OAuth2 integration"},"status":"done"},
+      {"target":"tasks","command":"upsert_task","selector":{"type":"task_text","value":"Add password validation"},"content":"- [ ] Add password validation"},
+      {"target":"spec","command":"append_to_section","selector":{"type":"section","value":"## Requirements"},"content":"- Two-factor authentication support"}
+    ]}}
+    ```
+
+    #### Minimal Valid Example
+    ```json
+    {"name":"update_spec","arguments":{"project_name":"$1","spec_name":"$2","commands":[
+      {"target":"spec","command":"append_to_section","selector":{"type":"section","value":"## Overview"},"content":"New line"}
+    ]}}
+    ```
+
+    #### Supported Operations & Recommended Ordering
+    - Supported: set_task_status, upsert_task, append_to_section, remove_list_item, remove_from_section, remove_section, replace_list_item, replace_in_section, replace_section_content
+    - Recommended ordering: 1) remove_list_item → 2) replace_in_section → 3) replace_section_content → 4) append_to_section
+    - Numbered lists: include the number (e.g., `1. Item`) in `task_text` to avoid ambiguity
+
+  ### Smart Content Loading Strategy
+
+  **Load spec content when:**
+  - Starting work on a spec you haven't recently loaded in this conversation
+  - After making previous edits that changed the content state
+  - When selectors are ambiguous or failing (to verify exact current text)
+  - Long conversations where content may have been edited elsewhere
+
+  **Skip loading when:**
+  - You just loaded the spec content in the current conversation
+  - Making first edit with fresh content already in context
+  - Using append operations (content position doesn't matter)
+
+  **Recovery Pattern:**
+  If a selector is ambiguous or not found → reload current content → copy exact task text or section header → re-issue with suggested selector
+
+  - **Best Practices**:
+    - **Load strategically**: Use `load_spec` when you need current state, not reflexively
+    - Use `edit_commands` for targeted updates; copy exact task text and headers
+    - `append_to_section` only for `spec` and `notes` (not `tasks`)
+
+#### Discovery & Validation
+
+- **`mcp_foundry_list_specs`**: Lightweight spec discovery for focused work
+
+  - When: Finding available specs without loading full project context
+  - Returns: Spec metadata (name, feature, date) without project details
+  - Use for: Quick spec discovery, focused feature work
+  - Performance: ~90% reduction in data transfer vs load_project
+  - MCP Tool Call: `{"name": "list_specs", "arguments": {"project_name": "..."}}`
+
+- **`mcp_foundry_list_projects`**: Discovering available projects
+
+  - When: Finding project names, checking what exists
+  - Returns: Project names, creation dates, spec counts
+  - MCP Tool Call: `{"name": "list_projects", "arguments": {}}`
+
+- **`validate_content`**: Checking content before creating projects/specs
+
+  - When: Ensuring content meets length/format requirements
+  - Use this proactively to avoid validation errors
+  - MCP Tool Call: `{"name": "validate_content", "arguments": {"content_type": "vision", "content": "..."}}`
+
+- **`get_foundry_help`**: Getting workflow guidance and examples
+  - Topics: `workflows`, `content-examples`, `project-structure`, `parameter-guidance`, `edit-commands`
+  - Use when: Understanding best practices, troubleshooting, learning edit commands
+  - **Essential**: Use `edit-commands` topic for targeted update guidance and examples
+  - MCP Tool Call: `{"name": "get_foundry_help", "arguments": {"topic": "edit-commands"}}`
+
+## Content Requirements & Boundaries
+
+### What You MUST Provide
+
+**Always include these in your arguments:**
+
+- **Vision** (200+ chars): Problem statement, target users, value proposition, roadmap priorities
+- **Tech Stack** (150+ chars): Languages, frameworks, databases, deployment, rationale
+- **Summary** (100+ chars): 2-3 sentences capturing project essence
+- **Specifications**: Requirements, acceptance criteria, implementation approach, dependencies
+- **Task Lists**: Specific, actionable implementation steps with checkboxes
+- **Notes**: Design decisions, context, implementation details
+
+### What CLI Handles
+
+**Never include these in content:**
+
+- File structure and organization
+- Content validation (length, format only)
+- Directory creation and timestamps
+- Project/spec naming conventions
+- Error handling and recovery suggestions
+
+### Content Formatting Guidelines
+
+#### Vision (vision.md)
+
+```markdown
+## Problem Statement
+
+[Describe the problem being solved]
+
+## Target Users
+
+[Who benefits from this solution]
+
+## Value Proposition
+
+[Unique advantages and competitive edge]
+
+## Key Features & Roadmap
+
+[Main capabilities and development priorities]
+```
+
+#### Tech Stack (tech-stack.md)
+
+```markdown
+## Backend
+
+- **Language**: [choice] - [rationale]
+- **Framework**: [choice] - [why this framework]
+
+## Database
+
+- **Type**: [choice] - [use case fit]
+
+## Deployment
+
+- **Platform**: [choice] - [scaling/scalability needs]
+```
+
+#### Specifications (spec.md)
+
+```markdown
+# Feature Name
+
+## Overview
+
+[Purpose and scope]
+
+## Requirements
+
+- [Functional requirements]
+- [Non-functional requirements]
+
+## Acceptance Criteria
+
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Implementation Approach
+
+[Technical strategy, architecture decisions]
+
+## Dependencies
+
+[What this feature depends on]
+```
+
+#### Task Lists (task-list.md)
+
+```markdown
+- [ ] Implement user authentication system
+- [ ] Add password hashing and validation
+- [ ] Create user registration endpoint
+- [ ] Add login/logout functionality
+- [ ] Implement session management
+```
+
+## Context Selection Best Practices
+
+### Choosing Reliable Context for Precise Matching
+
+**✅ Good Context Patterns:**
+- Use 3-5 lines of specific, unique text from current content
+- Include distinctive phrases unlikely to appear elsewhere in document
+- Choose structurally stable elements (section headers, specific requirements)
+- Use exact text from your current content (case-sensitive, whitespace-sensitive)
+
+**❌ Poor Context Patterns:**
+- Generic words that appear multiple times ("TODO", "implement", "add")
+- Single-line context (insufficient uniqueness)
+- Overly long lines that might have formatting variations
+- Content that appears in multiple sections without disambiguation
+
+**Examples of Effective Context Selection:**
+
+*Good Context Selection:*
+```json
+{
+  "section_context": "## Phase 1: Authentication",
+  "before_context": [
+    "## Phase 1: Authentication",
+    "- [ ] Implement OAuth2 integration with Google APIs"
+  ],
+  "after_context": [
+    "- [ ] Add password strength validation rules"
+  ]
+}
+```
+
+*Poor Context Selection:*
+```json
+{
+  "before_context": ["- TODO"],  // Too generic
+  "after_context": ["- Add feature"]  // Too vague
+}
+```
+
+### Selector Failure Recovery
+
+**When selectors are ambiguous or not found:**
+1. **Read Error Message**: Check suggestions for specific guidance
+2. **Load Current Content**: Use `load_spec` to see actual current state
+3. **Copy Exact Text**: Use precise text from loaded content (whitespace-sensitive)
+4. **Choose Better Context**: Select more unique, specific surrounding lines
+5. **Add Section Context**: Use section_context when content appears in multiple places
+6. **Retry with Precision**: Re-issue edit_commands with refined, exact selector
+7. **Strategic Fallback**: Use append for end additions, replace only for major changes
+
+**Common Failure Patterns & Solutions:**
+- **"Context not found"** → Content doesn't match exactly; reload and copy precise text
+- **"Multiple matches"** → Context too generic; add section_context or be more specific
+- **"Ambiguous match"** → Use longer, more distinctive context sequences
+- **"Formatting mismatch"** → Ensure exact whitespace and capitalization from current content
+
+## Best Practices & Workflow Patterns
+
+### 1. Efficient Spec Workflow
+
+#### For Focused Feature Work:
+```
+# ✅ Optimal: Direct spec loading with fuzzy matching
+mcp_foundry_load_spec project-name "auth"  # Fuzzy matches "user_authentication"
+
+# ✅ Alternative: Lightweight discovery then load
+mcp_foundry_list_specs project-name
+mcp_foundry_load_spec project-name specific-spec-name
+
+# ✅ For new features: Load project context first
+mcp_foundry_load_project project-name
+mcp_foundry_create_spec project-name new-feature
+```
+
+#### For Project-Wide Analysis:
+```
+# ✅ Use load_project for comprehensive context
+mcp_foundry_load_project project-name  # Full vision + tech-stack + all specs
+```
+
+```json
+// ✅ Good: Load project context before working
+{"name": "load_project", "arguments": {"project_name": "project-name"}}
+{"name": "create_spec", "arguments": {"project_name": "project-name", "feature_name": "new-feature", "spec": "...", "tasks": "...", "notes": "..."}}
+
+// ❌ Avoid: Creating specs without context
+{"name": "create_spec", "arguments": {"project_name": "project-name", "feature_name": "new-feature", "spec": "...", "tasks": "...", "notes": "..."}}
+```
+
+### 2. Use Iterative Development
+
+```json
+// Create initial spec
+{"name": "create_spec", "arguments": {"project_name": "my-project", "feature_name": "user-auth", "spec": "...", "tasks": "...", "notes": "..."}}
+
+// PREFERRED: Targeted updates with edit_commands (load content if needed)
+{"name": "load_spec", "arguments": {"project_name": "my-project", "spec_name": "20240101_user_auth"}}  // Only if you need current state
+
+// Mark task complete
+{"name":"update_spec","arguments":{"project_name":"my-project","spec_name":"20240101_user_auth","commands":[{"target":"tasks","command":"set_task_status","selector":{"type":"task_text","value":"Implement OAuth2 integration"},"status":"done"}]}}
+
+// Upsert a task (no duplicates)
+{"name":"update_spec","arguments":{"project_name":"my-project","spec_name":"20240101_user_auth","commands":[{"target":"tasks","command":"upsert_task","selector":{"type":"task_text","value":"Add password validation"},"content":"- [ ] Add password validation"}]}}
+
+// Append to a section in spec.md
+{"name":"update_spec","arguments":{"project_name":"my-project","spec_name":"20240101_user_auth","commands":[{"target":"spec","command":"append_to_section","selector":{"type":"section","value":"## Requirements"},"content":"- Two-factor authentication support"}]}}
+
+// Add new tasks (upsert prevents duplicates)
+{"name":"update_spec","arguments":{"project_name":"my-project","spec_name":"20240101_user_auth","commands":[{"target":"tasks","command":"upsert_task","selector":{"type":"task_text","value":"New task added to bottom"},"content":"- [ ] New task added to bottom"}]}}
+
+// Add implementation notes to specific section
+{"name":"update_spec","arguments":{"project_name":"my-project","spec_name":"20240101_user_auth","commands":[{"target":"notes","command":"append_to_section","selector":{"type":"section","value":"## Implementation Notes"},"content":"Additional notes appended to this section."}]}}
+```
+
+### 3. Follow Next Steps Guidance
+
+- Every Foundry command returns `next_steps` and `workflow_hints`
+- Follow these suggestions for efficient development
+- Use `get_foundry_help` with `workflows` topic for additional guidance
+
+### 4. Validate Content Proactively
+
+```json
+// Check content before creating
+{"name": "validate_content", "arguments": {"content_type": "vision", "content": "Your vision content here"}}
+{"name": "validate_content", "arguments": {"content_type": "spec", "content": "Your spec content here"}}
+```
+
+### 5. Use Appropriate Spec Granularity
+
+- **One spec per feature/story**: Don't create monolithic specs
+- **Use task-list.md**: Break features into actionable implementation steps
+- **Use notes.md**: Document design decisions and rationale
+- **Update regularly**: Use append operations to track progress
+
+## Common Workflows
+
+### New Project Setup
+
+1. **Create Project**: `{"name": "create_project", "arguments": {"project_name": "my-app", "vision": "...", "tech_stack": "...", "summary": "..."}}`
+2. **Create First Spec**: `{"name": "create_spec", "arguments": {"project_name": "my-app", "feature_name": "user-auth", "spec": "...", "tasks": "...", "notes": "..."}}`
+3. **Follow next_steps** for iterative development
+
+### Feature Development Cycle
+
+#### For Existing Features:
+1. **Load Spec**: `mcp_foundry_load_spec my-app "payment"` (fuzzy matching)
+2. **Update Progress**: Use `mcp_foundry_update_spec` with `upsert_task` to add new tasks
+3. **Add Notes**: Document implementation decisions using `append_to_section` for notes
+4. **Review Status**: Load spec again to check progress and get workflow guidance
+
+#### For New Features:
+1. **Load Project**: `mcp_foundry_load_project my-app` (get full context)
+   ```json
+   {"name": "load_project", "arguments": {"project_name": "my-app"}}
+   ```
+2. **Create Spec**: `mcp_foundry_create_spec my-app payment-integration`
+   ```json
+   {"name": "create_spec", "arguments": {"project_name": "my-app", "feature_name": "payment-integration", "spec": "...", "tasks": "...", "notes": "..."}}
+   ```
+3. **Update Progress**: Use `mcp_foundry_update_spec` with edit commands to add new tasks
+4. **Add Notes**: Document implementation decisions using `append_to_section` for notes
+
+### Existing Codebase Analysis
+
+1. **Explore Codebase**: Use Search, Grep, Read tools to understand structure
+2. **Analyze Project**: `{"name": "analyze_project", "arguments": {"project_name": "analyzed-app", "vision": "...", "tech_stack": "...", "summary": "..."}}`
+3. **Create Specs**: Add feature development plans within analyzed project
+
+### Context Loading for Conversations
+
+1. **Focused Work**: Load specific specs directly with fuzzy matching (includes project summary)
+2. **Spec Discovery**: Use `list_specs` for lightweight discovery without full project load
+3. **Full Context**: Load entire project when starting comprehensive work or creating new features
+
+## Error Handling & Troubleshooting
+
+### Content Validation Errors
+
+- **"Content too short"**: Provide more detailed content (vision: 200+, tech-stack: 150+, summary: 100+)
+- **"Content validation failed"**: Use `validate_content` to check before creating
+- **Solution**: Expand content with more specific details and examples
+
+### Project/Spec Not Found
+
+- **"Project not found"**: Use `list-projects` to see available projects
+- **"Spec not found"**: Try fuzzy matching or use `list-specs` to see available specs
+- **Solution**: Use `list-specs` for discovery or try fuzzy matching with feature names
+- **For comprehensive analysis**: Use `load_project` to see full project context
+
+### File Operation Errors
+
+- **Permission denied**: May need to run with appropriate permissions
+- **File locked**: Close files in other applications
+- **Solution**: Check file permissions and close conflicting applications
+
+## Tips for Effective Usage
+
+1. **Choose Right Workflow**: Use direct spec loading for focused work, project loading for comprehensive analysis
+2. **Leverage Fuzzy Matching**: Use natural language queries like "auth" instead of exact spec names
+3. **Use Lightweight Discovery**: `list-specs` for quick discovery without full project context
+4. **Use Append for Updates**: Build up task lists and notes incrementally
+5. **Follow Guidance**: Pay attention to next_steps and workflow_hints
+6. **Validate First**: Use validate-content to avoid rejection
+7. **Keep Specs Focused**: One feature per spec, use task-list for breakdown
+8. **Document Decisions**: Use notes.md for rationale and context
+9. **Update Regularly**: Mark tasks complete, add implementation notes
+10. **Get Help**: Use get-foundry-help for workflow guidance
+
+## Quick Reference
+
+### Most Common Commands
+
+```
+# Focused work on existing feature (PREFERRED for efficiency)
+mcp_foundry_load_spec my-project "auth"  # Fuzzy matching
+
+# Lightweight spec discovery
+mcp_foundry_list_specs my-project
+
+# Create new feature spec (load project first for context)
+mcp_foundry_load_project my-project
+mcp_foundry_create_spec my-project user-auth
+```
+
+```json
+// Start working on existing project
+{"name": "load_project", "arguments": {"project_name": "my-project"}}
+
+// Create new feature spec
+{"name": "create_spec", "arguments": {"project_name": "my-project", "feature_name": "user-auth", "spec": "...", "tasks": "...", "notes": "..."}}
+
+// PREFERRED: Targeted updates with edit_commands (load content if needed)
+{"name": "load_spec", "arguments": {"project_name": "my-project", "spec_name": "20240101_user_auth"}}  // Only if you need current state
+{"name":"update_spec","arguments":{"project_name":"my-project","spec_name":"20240101_user_auth","commands":[{"target":"tasks","command":"set_task_status","selector":{"type":"task_text","value":"Implement OAuth2 integration"},"status":"done"}]}}
+
+// Add new tasks (upsert prevents duplicates)
+{"name":"update_spec","arguments":{"project_name":"my-project","spec_name":"20240101_user_auth","commands":[{"target":"tasks","command":"upsert_task","selector":{"type":"task_text","value":"New task at bottom"},"content":"- [ ] New task at bottom"}]}}
+
+// Get help (including edit-commands guidance)
+{"name": "get_foundry_help", "arguments": {"topic": "edit-commands"}}
+{"name": "get_foundry_help", "arguments": {"topic": "workflows"}}
+```
+
+### Content Length Requirements
+
+- **Vision**: 200+ characters (2-4 paragraphs with examples)
+- **Tech Stack**: 150+ characters (detailed technology choices with rationale)
+- **Summary**: 100+ characters (2-3 sentences capturing essence)
+- **Specifications**: Comprehensive but focused on requirements and approach
+- **Task Lists**: Specific, actionable implementation steps
+- **Notes**: Design decisions, context, implementation details
+
+Remember: Foundry manages structure, you provide content. Focus on comprehensive, well-structured content that helps future development.
