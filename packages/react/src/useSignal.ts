@@ -2,8 +2,25 @@ import { createSignal, type Signal } from '@signalis/core';
 import { useMemo } from 'react';
 import { EMPTY } from './empty.js';
 
+export function useSignal<T>(initializer: () => T): Signal<T>;
 export function useSignal(value?: null | undefined): Signal<unknown>;
 export function useSignal<T extends {}>(value: T): Signal<T>;
-export function useSignal<T extends {}>(value?: T | null | undefined): Signal<T> | Signal<unknown> {
-  return useMemo(() => (arguments.length > 0 ? createSignal(value) : createSignal()), EMPTY);
+export function useSignal<T extends {}>(
+  valueOrInitializer?: T | (() => T) | null | undefined,
+): Signal<T> | Signal<unknown> {
+  return useMemo(() => {
+    // Handle no arguments
+    if (arguments.length === 0) {
+      return createSignal();
+    }
+
+    // Detect function initializer pattern
+    if (typeof valueOrInitializer === 'function') {
+      // Call initializer to get value
+      return createSignal((valueOrInitializer as () => T)());
+    }
+
+    // Direct value
+    return createSignal(valueOrInitializer as T);
+  }, EMPTY);
 }

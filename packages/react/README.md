@@ -33,11 +33,14 @@ export default reactor(Counter);
 `useSignal` is a React hook for creating a `Signal` inside of a React component. It has the following signatures:
 
 ```ts
+useSignal<T>(initializer: () => T): Signal<T>;
 useSignal(value?: null | undefined): Signal<unknown>;
 useSignal<T extends {}>(value: T): Signal<T>;
 ```
 
 `useSignal` will return a `Signal` just like `createSignal` does, except that it uses `useMemo` under the hood to persist the `Signal` throughout component re-renders.
+
+### Basic Usage
 
 ```jsx
 const Counter = () => {
@@ -59,6 +62,23 @@ const Counter = () => {
 
 export default reactor(Counter);
 ```
+
+### Lazy Initialization
+
+For expensive initial values, use a function initializer to defer computation until the signal is first created. The initializer function runs only once, not on every render:
+
+```jsx
+const DataProcessor = () => {
+  // ✅ Expensive computation only runs once
+  const data = useSignal(() => processLargeDataset());
+
+  return <div>Processed: {data.value.length} items</div>;
+};
+
+export default reactor(DataProcessor);
+```
+
+**Note:** Functions are always treated as initializers (matching React's `useState` pattern).
 
 ## `useDerived<T>(fn: () => T, deps?: DependencyList): Derived<T>`
 
