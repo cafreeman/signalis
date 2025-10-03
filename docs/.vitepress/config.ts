@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import llmsPlugin, { copyOrDownloadAsMarkdownButtons } from 'vitepress-plugin-llms';
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -88,7 +89,25 @@ export default defineConfig({
 
   lastUpdated: true,
 
+  markdown: {
+    config(md) {
+      md.use(copyOrDownloadAsMarkdownButtons);
+    },
+  },
+
   sitemap: {
     hostname: 'https://cafreeman.github.io/signalis/',
+  },
+
+  vite: {
+    plugins: [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      llmsPlugin({
+        // Plugin will automatically generate llms.txt and llms-full.txt
+      }) as any,
+    ],
+    ssr: {
+      noExternal: ['vitepress-plugin-llms'],
+    },
   },
 });
