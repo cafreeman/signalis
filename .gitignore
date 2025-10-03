@@ -4,3 +4,7 @@ dist/
 
 packages/core/old-src
 packages/core/__scratch.ts
+.cursor/plans
+
+# VitePress cache
+docs/.vitepress/cache/

@@ -2,6 +2,7 @@
   "name": "signalis",
   "version": "0.0.1",
   "description": "",
+  "type": "module",
   "main": "index.js",
   "private": true,
   "scripts": {
@@ -12,6 +13,9 @@
     "build": "pnpm build:ts && pnpm build:types",
     "build:ts": "pnpm --filter core --filter react run build",
     "build:types": "pnpm --filter core --filter react run build:types",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "release": "release-it",
     "release:dry": "release-it --dry-run"
   },
@@ -34,6 +38,7 @@
     "rimraf": "^6.0.1",
     "typescript": "^5.9.2",
     "vite": "^7.0.6",
+    "vitepress": "^1.6.4",
     "vitest": "^3.2.4"
   },
   "volta": {
