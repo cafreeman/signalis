@@ -1,6 +1,7 @@
 ---
 alwaysApply: true
 ---
+
 # Signalis Project Structure
 
 This is a monorepo for Signalis, a lightweight reactivity library. The project uses pnpm workspaces.
@@ -15,11 +16,13 @@ This is a monorepo for Signalis, a lightweight reactivity library. The project u
 - **`packages/react/`**: React integration (`@signalis/react`)
   - Main entry: [packages/react/src/index.ts](mdc:packages/react/src/index.ts)
   - Re-exports all of `@signalis/core` plus React-specific hooks
-  - Key components: reactor HOC, useSignal, useDerived, useSignalEffect
+  - Key components: reactor HOC (uses `Reaction.trap()`), useSignal, useDerived, useSignalEffect
+  - **reactor mechanism**: Wraps renders in `Reaction.trap()` - only render-phase reads are tracked
 
 ## Key Concepts
 
 ### Reactive Primitives
+
 1. **Signal**: Writable reactive value (see [packages/core/src/signal.ts](mdc:packages/core/src/signal.ts))
 2. **Derived**: Readonly reactive computed value (see [packages/core/src/derived.ts](mdc:packages/core/src/derived.ts))
 3. **Effect**: Reactive side-effect function (see [packages/core/src/effect.ts](mdc:packages/core/src/effect.ts))
@@ -28,6 +31,7 @@ This is a monorepo for Signalis, a lightweight reactivity library. The project u
 6. **Store**: Proxy-based fine-grained reactive object (see [packages/core/src/store.ts](mdc:packages/core/src/store.ts))
 
 ### Reactivity System
+
 - **Lazy evaluation**: Derived values only recompute when accessed
 - **Push-pull model**: Changes push notifications, reads pull updates
 - **Dependency tracking**: Automatic tracking via [packages/core/src/state.ts](mdc:packages/core/src/state.ts)
@@ -38,3 +42,5 @@ This is a monorepo for Signalis, a lightweight reactivity library. The project u
 - **Internal properties**: Use `_` prefix for internal class properties/methods (e.g., `_value`, `_observers`)
 - **Observers pattern**: Reactive primitives maintain `_observers` arrays for dependency tracking
 - **State management**: Central state management in [packages/core/src/state.ts](mdc:packages/core/src/state.ts) handles dirty checking and reaction running
+- **Reaction primitive**: Core building block for reactive contexts. `Reaction.trap()` establishes a tracking context where signal reads are recorded. Used by Effects, reactor HOC, and useSignalEffect
+- **React integration key insight**: `reactor` wraps each component render in `Reaction.trap()`, so only signal reads during render execution are tracked, not reads in event handlers or callbacks

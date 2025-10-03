@@ -12,13 +12,13 @@ To create a `Signal`, use the `createSignal` function:
 
 ### `createSignal<T>(value: T, isEqual?: false | (old: T, new: T) => boolean): Signal<T>`
 
-This is the form of `createSignal` that you will likely use more often than not. It accepts a value and (optionally) an equality function. By default, `Signal` will use `===` to determine when a particular `Signal`'s value has changed (and hence, when it needs to notify that it has updated), but you can provide your own equality function if you need to customize this behavior. Additonally, if you'd like to make the `Signal` _always_ notify when it's been, you can set the second argument to `false`.
+This is the form of `createSignal` that you will likely use more often than not. It accepts a value and (optionally) an equality function. By default, `Signal` will use `===` to determine when a particular `Signal`'s value has changed (and hence, when it needs to notify that it has updated), but you can provide your own equality function if you need to customize this behavior. Additionally, if you'd like to make the `Signal` _always_ notify when it's updated, you can set the second argument to `false`.
 
 ```ts
 // Basic usage
 const count = createSignal(0);
 const list = createSignal(['foo', 'bar', 'baz']);
-const me = createSignal({ firstName: 'Chris', lastName: 'Freeman' });
+const me = createSignal({ firstName: 'Jane', lastName: 'Smith' });
 
 // to read a signal, access its `value` property
 count.value; // 0
@@ -29,18 +29,18 @@ count.value = 1;
 // Since signals use `===` equality, object and array updates need to be immutable
 me.value = {
   ...me.value,
-  firstName: 'Christopher',
+  firstName: 'Janet',
 };
 
 // Pass a custom equality function to change how signals determine when they've changed
 import { isEqual } from 'lodash/isEqual';
 const meButMutable = createSignal(
   {
-    firstName, 'Chris',
-    lastName: 'Freeman'
+    firstName: 'Jane',
+    lastName: 'Smith',
   },
-  isEqual
-)
+  isEqual,
+);
 ```
 
 ### `createSignal(): Signal<unknown>`
@@ -61,28 +61,28 @@ As you may have already realized, a `Signal` on its own isn't very useful withou
 
 To create a `Derived`, use `createDerived`:
 
-### `createDerived<T>(fn: () => T): T`
+### `createDerived<T>(fn: () => T): Derived<T>`
 
 `createDerived` accepts a callback that reads one or more reactive values, does some computation with them, and returns the result. `createDerived` should _always_ be used to represent a reactive _value_, so it's important that the callback actually return something. Furthermore, the callback passed into `createDerived` should be a pure function (it shouldn't have any side effects). If you need to represent a reactive _function_, there's a different primitive for that (see `createEffect` below).
 
 ```ts
-const firstName = createSignal('Chris');
-const lastName = createSignal('Freeman');
+const firstName = createSignal('Alice');
+const lastName = createSignal('Johnson');
 
 const fullName = createDerived(() => `${firstName.value} ${lastName.value}`);
 
 // Since Derived is a reactive value, you access its value the same way you would a Signal
-fullName.value; // 'Chris Freeman'
+fullName.value; // 'Alice Johnson'
 
 // Derived can rely on other Derived
 const fullNameBUTYELLING = createDerived(() => `${fullName.value.toUpperCase()}!!!!!!!!!!!!!`);
 
-fullNameBUTYELLING.value; // 'CHRIS FREEMAN!!!!!!!!!!!!!'
+fullNameBUTYELLING.value; // 'ALICE JOHNSON!!!!!!!!!!!!!'
 
 // Setting the value of a Signal at the root of a chain of Derived will notify all of them that they may need to recompute
-firstName.value = 'Christopher';
+firstName.value = 'Maria';
 
-fullNameBUTYELLING.value; // 'CHRISTOPHER FREEMAN!!!!!!!!!!!!!'
+fullNameBUTYELLING.value; // 'MARIA JOHNSON!!!!!!!!!!!!!'
 ```
 
 In order to avoid doing any unnecessary work, `Derived` is very clever about when it should actually recompute. It will _never_ recompute just because one of its sources changed. Something else has to first try and read its `value` property before it will even consider recomputing. Once something does access its `value`, `Derived` follows the heuristic below to determine if it should actually recompute:
@@ -99,7 +99,7 @@ Here's an example to help clarify further:
 const count = createSignal(1);
 
 // This will recompute whenever count changes
-const countIsOdd = createDerived(() => count.value % 2 !=== 0);
+const countIsOdd = createDerived(() => count.value % 2 !== 0);
 
 // This will recompute whenever countIsOdd changes
 const oddOrEven = createDerived(() => {
@@ -108,15 +108,13 @@ const oddOrEven = createDerived(() => {
   } else {
     return 'even';
   }
-})
-
+});
 
 // Trigger the `countIsOdd` computation since it has never been read before.
-countIsOdd.value // true, since count.value === 1
+countIsOdd.value; // true, since count.value === 1
 
 // Trigger the `oddOrEven` computation since it *also* has never been run before. However, since `countIsOdd` has already been read, and `count` hasn't changed, `countIsOdd` does *not* recompute.
-oddOrEven.value // 'odd', since countIsOdd.value === true
-
+oddOrEven.value; // 'odd', since countIsOdd.value === true
 
 count.value = 3; // Set count to another odd number
 
@@ -131,7 +129,7 @@ count.value = 3; // Set count to another odd number
  * `oddOrEven`, upon being told that its direct dependencies haven't changed, returns its previous value ('odd') and skips computing
  *
  */
-oddOrEven.value // still 'odd', no need to recompute since we know `countIsOdd` hasn't changed
+oddOrEven.value; // still 'odd', no need to recompute since we know `countIsOdd` hasn't changed
 ```
 
 ## Effects
@@ -168,7 +166,7 @@ Effects can also respond to `Derived`, and will use the same logic as `Derived` 
 
 ```ts
 const count = createSignal(1);
-const countIsOdd = createDerived(() => count.value % 2 !=== 0);
+const countIsOdd = createDerived(() => count.value % 2 !== 0);
 
 let message: string;
 
@@ -186,7 +184,7 @@ console.log(message); // 'even'
 count.value = 4;
 
 // effect does *not* recompute since we've gone from one even number to another
-console.log(message) // 'even'
+console.log(message); // 'even'
 ```
 
 Since effects compute eagerly, it's important that we provide a way to clean them up in the event that we no longer need them. To do that, we can use the function `createEffect` returns:
@@ -258,7 +256,7 @@ A `Resource` is a reactive abstraction built to help developers incorporate asyn
 
 A `Resource` exposes four pieces of state:
 
-- `value`: `Signal<ValueType | undefined>` - The value of the most recent async request (this is the most up to date value)
+- `value`: `ValueType | undefined` - The value of the most recent async request (this is the most up to date value)
 - `last`: `ValueType | undefined` - The value of the previous run of the async request
 - `loading`: `Signal<boolean>` - Whether or not the `Resource` is currently in the process of fetching
 - `error`: `Signal<unknown>` - A `Signal` whose value will be populated with the contents of an error that is caught during the fetcher's execution.
@@ -291,10 +289,8 @@ The two-argument version of `createResource` allows you to designate a reactive 
 
 ```ts
 const pageNumber = createSignal(false);
-const postResource = createResource(
-  pageNumber,
-  (pageNumber: number) =>
-    fetch(`api.com/posts/${pageNumber}`).then((res) => res.json())
+const postResource = createResource(pageNumber, (pageNumber: number) =>
+  fetch(`api.com/posts/${pageNumber}`).then((res) => res.json()),
 );
 
 // No HTTP request has happened yet since `pageNumber` is false.
@@ -343,20 +339,20 @@ For example, let's say we wanted to model a classic todo list. Here's what it wo
 ```ts
 // with signals
 const todos = createSignal([]);
-const todoCount = createDerived(() => todos.length);
+const todoCount = createDerived(() => todos.value.length);
 const todoStore = createSignal({
   todos,
   todoCount,
 });
 
 // add a todo
-todoStore.todos.value = [
-  ...todoStore.todos.value,
+todoStore.value.todos.value = [
+  ...todoStore.value.todos.value,
   createSignal({ id: '1', text: 'Use a store for this' }),
 ];
 
 // get all todo names
-todoStore.todos.value.map((todo) => todo.value.text);
+todoStore.value.todos.value.map((todo) => todo.value.text);
 
 // with a Store
 const todoStore = createStore({
