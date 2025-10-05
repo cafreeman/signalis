@@ -1,8 +1,9 @@
 {
   "git": {
-    "tagName": "v${version}",
-    "push": true,
-    "requireCleanWorkingDir": true
+    "requireCleanWorkingDir": false,
+    "commit": false,
+    "tag": false,
+    "push": false
   },
   "npm": {
     "publish": false
@@ -10,9 +11,15 @@
   "hooks": {
     "before:init": [
       "pnpm changeset version",
+      "git add .",
+      "git commit -m 'chore: version packages' || true",
       "pnpm install",
       "pnpm build"
     ],
-    "after:release": "pnpm -r publish --access public"
+    "after:release": [
+      "git tag v$(node -p \"require('./packages/react/package.json').version\")",
+      "git push --follow-tags",
+      "pnpm -r publish --access public"
+    ]
   }
 }

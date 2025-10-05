@@ -181,7 +181,7 @@ Before merging:
 
 ### Automated Release Process (Recommended)
 
-This project uses **[Release It](https://github.com/release-it/release-it)** for automated versioning, tagging, and publishing:
+This project uses **[Release It](https://github.com/release-it/release-it)** orchestration with **[Changesets](https://github.com/changesets/changesets)** for version management:
 
 ```bash
 pnpm release
@@ -189,22 +189,35 @@ pnpm release
 
 This single command will:
 
-1. **Apply changesets** - Run `pnpm changeset version` to bump versions
-2. **Install dependencies** - Run `pnpm install` to update lockfile
-3. **Build packages** - Run `pnpm build` to compile TypeScript
-4. **Create git tag** - Automatically tag the release (e.g., `v0.2.0`)
-5. **Push to remote** - Push commits and tags to GitHub
-6. **Publish to npm** - Publish packages with `--access public`
+1. **Apply changesets** - Run `pnpm changeset version` to bump workspace package versions
+2. **Commit version changes** - Automatically commit the version bump with "chore: version packages"
+3. **Install dependencies** - Run `pnpm install` to update lockfile
+4. **Build packages** - Run `pnpm build` to compile TypeScript
+5. **Create git tag** - Tag based on workspace package version (e.g., `v0.2.7`)
+6. **Push to remote** - Push commits and tags to GitHub
+7. **Publish to npm** - Publish all workspace packages with `--access public`
+
+**Important**: The root `package.json` version is **not used** for releases. Tags and versions are derived from the workspace packages (`packages/*/package.json`).
 
 ### Testing Releases
 
-Before publishing, test the release process:
+⚠️ **Warning**: Do NOT use `pnpm release:dry` as it will consume changesets without publishing.
+
+Instead, manually verify:
 
 ```bash
-pnpm release:dry
-```
+# Check what changesets exist
+ls .changeset/*.md
 
-This runs the full process without actually publishing or pushing changes.
+# Preview what versions would be bumped
+pnpm changeset status
+
+# Verify build works
+pnpm build
+
+# Check tests pass
+pnpm test
+```
 
 ### Legacy Manual Process
 
@@ -229,10 +242,47 @@ git push origin --tags
 
 See [.release-it.json](mdc:.release-it.json) for current configuration:
 
-- **Git tagging** - Automatically creates and pushes version tags
-- **Clean working dir** - Requires clean git state before release
-- **Hooks integration** - Runs changesets, build, and publish in sequence
+- **Git operations disabled** - `release-it` doesn't manage git directly; changesets + hooks do
+- **No version bumping** - Version management is delegated to changesets
+- **Hooks integration** - Runs changesets, commit, build, tag, push, and publish in sequence
 - **Monorepo support** - Works with pnpm workspaces
+- **Tag from workspace** - Git tags are created from `packages/react/package.json` version, not root
+
+### Key Configuration Details
+
+```json
+{
+  "git": {
+    "requireCleanWorkingDir": false,
+    "commit": false,
+    "tag": false,
+    "push": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "before:init": [
+      "pnpm changeset version",
+      "git add .",
+      "git commit -m 'chore: version packages' || true",
+      "pnpm install",
+      "pnpm build"
+    ],
+    "after:release": [
+      "git tag v$(node -p \"require('./packages/react/package.json').version\")",
+      "git push --follow-tags",
+      "pnpm -r publish --access public"
+    ]
+  }
+}
+```
+
+This configuration ensures:
+1. **Changesets controls all versioning** - No version drift between root and workspace packages
+2. **Automatic commit of version bumps** - The version change is committed before tagging
+3. **Tag from workspace package** - Tags reflect actual published version
+4. **Single source of truth** - Workspace packages define the version, root package.json is ignored
 
 ## Changeset Configuration
 
@@ -271,4 +321,76 @@ feat(react): add deps parameter to useSignalEffect for mixed dependencies
 - Fix stale closure issue when effects reference props or state alongside signals
 - Add comprehensive tests for mixed dependency scenarios
 - Update README with examples and best practices for mixed dependencies
+```
+
+## Troubleshooting
+
+### Version Drift Between Root and Workspace Packages
+
+**Problem**: Root `package.json` shows different version than workspace packages.
+
+**Solution**: The root `package.json` version is **ignored** in our release process. Only workspace package versions (`packages/*/package.json`) matter.
+
+To verify versions:
+```bash
+# Check workspace package versions (source of truth)
+cat packages/react/package.json | grep version
+cat packages/core/package.json | grep version
+
+# Check what's published on npm
+npm view @signalis/react version
+npm view @signalis/core version
+```
+
+### Changesets Consumed Without Publishing
+
+**Problem**: Ran `pnpm release:dry` or release failed, but changesets are gone.
+
+**Why**: `pnpm changeset version` consumes changesets and updates CHANGELOGs immediately, even in dry runs.
+
+**Solution**: The changeset content is now in the CHANGELOG. Either:
+1. Manually publish if the code is ready
+2. Create a new changeset if you need to make more changes
+
+### Failed Release with Git Tag Created
+
+**Problem**: Release failed but git tag `vX.Y.Z` was created.
+
+**Solution**: Delete the tag locally and remotely:
+```bash
+# Delete local tag
+git tag -d vX.Y.Z
+
+# Delete remote tag
+git push origin :refs/tags/vX.Y.Z
+```
+
+### How to Verify Fix is Published
+
+After making a fix:
+1. Check the CHANGELOG in the workspace package (e.g., `packages/react/CHANGELOG.md`)
+2. Note the version number that contains your fix
+3. Check npm: `npm view @signalis/react version`
+4. If versions match, your fix is live!
+
+### Clean Slate After Failed Release
+
+If the release process created a mess:
+```bash
+# 1. Check current state
+git log --oneline -5
+git tag -l "v0.2.*"
+
+# 2. Delete problematic tags
+git tag -d vX.Y.Z
+git push origin :refs/tags/vX.Y.Z
+
+# 3. If needed, revert bogus commits
+git revert <commit-hash>
+git push origin main
+
+# 4. Verify clean state
+git status
+cat packages/react/package.json | grep version
+npm view @signalis/react version
 ```
