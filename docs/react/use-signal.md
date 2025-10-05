@@ -5,9 +5,10 @@ The `useSignal` hook creates a signal that persists across component re-renders,
 ## Signatures
 
 ```ts
+function useSignal(): Signal<unknown>;
+function useSignal(value: null | undefined): Signal<unknown>;
 function useSignal<T>(initializer: () => T): Signal<T>;
-function useSignal(value?: null | undefined): Signal<unknown>;
-function useSignal<T extends {}>(value: T): Signal<T>;
+function useSignal<T extends {}>(value: Exclude<T, Function>): Signal<T>;
 ```
 
 ## Basic Usage
