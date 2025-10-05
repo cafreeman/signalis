@@ -1,6 +1,6 @@
 {
   "name": "signalis",
-  "version": "0.0.2",
+  "version": "0.2.6",
   "description": "",
   "type": "module",
   "main": "index.js",
