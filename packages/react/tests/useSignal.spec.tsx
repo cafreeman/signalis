@@ -167,4 +167,41 @@ describe('useSignal', () => {
     render(<Wrapped />);
     expect(screen.getByText('Types validated')).toBeDefined();
   });
+
+  test('type assertions for all useSignal modes', () => {
+    function TypeTestComponent() {
+      // Test all possible useSignal modes
+      
+      // 1. No arguments - should return Signal<unknown>
+      const noArgs = useSignal();
+      expectTypeOf(noArgs).toEqualTypeOf<Signal<unknown>>();
+
+      // 2. null - should return Signal<unknown>
+      const nullValue = useSignal(null);
+      expectTypeOf(nullValue).toEqualTypeOf<Signal<unknown>>();
+
+      // 3. Some value - should return Signal<value type>
+      const stringValue = useSignal('hello');
+      expectTypeOf(stringValue).toEqualTypeOf<Signal<string>>();
+
+      const numberValue = useSignal(42);
+      expectTypeOf(numberValue).toEqualTypeOf<Signal<number>>();
+
+      const objectValue = useSignal({ name: 'John', age: 30 });
+      expectTypeOf(objectValue).toEqualTypeOf<Signal<{ name: string; age: number }>>();
+
+      // 4. Lazy initializer - should return Signal<return type>
+      const lazyString = useSignal(() => 'lazy string');
+      expectTypeOf(lazyString).toEqualTypeOf<Signal<string>>();
+
+      const lazyObject = useSignal(() => ({ computed: true }));
+      expectTypeOf(lazyObject).toEqualTypeOf<Signal<{ computed: boolean }>>();
+
+      return <div>All type modes validated</div>;
+    }
+
+    const Wrapped = reactor(TypeTestComponent);
+    render(<Wrapped />);
+    expect(screen.getByText('All type modes validated')).toBeDefined();
+  });
 });

@@ -5,12 +5,12 @@ import { EMPTY } from './empty.js';
 export function useSignal<T>(initializer: () => T): Signal<T>;
 export function useSignal(value?: null | undefined): Signal<unknown>;
 export function useSignal<T extends {}>(value: T): Signal<T>;
-export function useSignal<T extends {}>(
+export function useSignal<T>(
   valueOrInitializer?: T | (() => T) | null | undefined,
 ): Signal<T> | Signal<unknown> {
   return useMemo(() => {
     // Handle no arguments
-    if (arguments.length === 0) {
+    if (valueOrInitializer === undefined) {
       return createSignal();
     }
 
