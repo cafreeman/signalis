@@ -148,9 +148,20 @@ export class Derived<T> {
    * marked dirty again; and `reconcileSources` assumes a computation's
    * leading (unchanged) sources are still subscribed, so a recompute would
    * never re-link them. Resetting to the initial state avoids both hazards.
+   *
+   * Dependents (this derived's own observers) are marked stale so they never
+   * serve values cached from a node that no longer tracks upstream changes;
+   * their next read revalidates, which transitively resurrects this node.
    */
   dispose() {
     unlinkObservers(this, 0);
+    // Invalidate dependents: disposal breaks the upstream subscription, so
+    // anything they cached from this node is no longer trustworthy
+    if (this._observers) {
+      for (let i = 0; i < this._observers.length; i++) {
+        this._observers[i]?.markUpdate(STALE);
+      }
+    }
     this._sources = null;
     this._status = DIRTY;
   }

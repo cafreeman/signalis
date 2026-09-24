@@ -252,4 +252,21 @@ describe('Derived', () => {
     expect(a.value).toEqual(1);
     expect(spyA).toHaveBeenCalledTimes(2);
   });
+
+  test('dispose invalidates dependents instead of leaving them stale', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+    const baz = createDerived(() => bar.value);
+
+    expect(baz.value).toEqual(0);
+
+    bar.dispose();
+
+    foo.value = 1;
+
+    // `bar` is disposed and never read again, but `baz` must not serve its
+    // stale cached value: disposal should mark dependents stale so their next
+    // read revalidates (which resurrects `bar` on its next compute)
+    expect(baz.value).toEqual(1);
+  });
 });
