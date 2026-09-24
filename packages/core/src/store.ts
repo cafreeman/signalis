@@ -14,7 +14,7 @@ export function isWrappable(v: any) {
 }
 
 function isGetter(
-  v: PropertyDescriptor | undefined
+  v: PropertyDescriptor | undefined,
 ): v is PropertyDescriptor & { get: () => unknown } {
   return !!(v && v.get);
 }

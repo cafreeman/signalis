@@ -1,1 +1,4 @@
 dist
+pnpm-lock.yaml
+docs/api
+.cursor
