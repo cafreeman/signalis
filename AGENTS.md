@@ -114,7 +114,7 @@ The root `package.json` version is **not** used for releases — only `packages/
 ## Testing conventions
 
 - Vitest; tests live in `packages/*/tests/` as `*.spec.ts` / `*.spec.tsx`; benchmarks in `packages/core/tests/bench/`.
-- Import from source with relative paths (`import { createSignal } from '../src/signal'`), not from the package barrel.
+- Import from source with relative paths (`import { createSignal } from '../src/signal.js'`), not from the package barrel.
 - React component tests use `@testing-library/react`.
 - To assert reactive updates, use a spy effect and count calls:
 
@@ -131,6 +131,6 @@ expect(spy).toHaveBeenCalledTimes(2); // initial + update
 
 - `Derived` is lazy: it only recomputes when read. Reading `.value` in a test is how you force evaluation.
 - `reactor` tracks signal reads **during render only** — reads in event handlers, callbacks, or effects are not tracked.
-- `Derived#dispose()` resets the derived to its initial state (unsubscribed and dirty), and a later read re-subscribes it from scratch. Unlinking alone would NOT be safe: dirty-marking flows through observer lists, and `reconcileSources` assumes a computation's unchanged leading sources are still subscribed — an unlinked derived would go permanently stale. See the tests in `packages/core/tests/derived.spec.ts`.
+- `Derived#dispose()` resets the derived to its initial state (unsubscribed and dirty), marks its dependents stale so they never serve cached values from a node that stopped tracking upstream, and a later read re-subscribes it from scratch. Unlinking alone would NOT be safe: dirty-marking flows through observer lists, and `reconcileSources` assumes a computation's unchanged leading sources are still subscribed — an unlinked derived would go permanently stale. See the tests in `packages/core/tests/derived.spec.ts`.
 - `@signalis/react` must never bundle `@signalis/core` (its vite config marks it external). Core's reactive graph is module-level state; a bundled copy would create a second, independent graph.
 - Multiple signal writes can be grouped with `batch()` so observers run once.
