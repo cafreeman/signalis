@@ -1,6 +1,6 @@
 import { createDerived, type Derived } from '@signalis/core';
 import type { DependencyList } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { EMPTY } from './empty.js';
 
 function areInputsEqual(
@@ -28,30 +28,34 @@ function areInputsEqual(
 }
 
 export function useDerived<T>(fn: () => T, deps: DependencyList = EMPTY): Derived<T> {
-  const derivedRef = useRef<Derived<T> | null>(null);
-  const previousDepsRef = useRef<readonly unknown[] | undefined>(undefined);
+  const [state, setState] = useState(() => ({
+    derived: createDerived(fn),
+    deps: deps as readonly unknown[],
+  }));
 
-  // Create (or, when `deps` change, re-create) the derived during render.
-  // Creating a `Derived` is cheap: it is lazy, so it neither computes nor
-  // subscribes to its sources until its `value` is read. Deps exist only for
-  // non-reactive inputs (e.g. props); reactive dependencies are tracked
-  // automatically by the derived itself.
-  if (derivedRef.current === null || !areInputsEqual(previousDepsRef.current, deps)) {
-    // Dispose the previous derived (if any) so it stops observing its old
-    // sources; otherwise it would leak by remaining in their observer lists
-    derivedRef.current?.dispose();
-    derivedRef.current = createDerived(fn);
-    previousDepsRef.current = deps;
+  // Deps exist only for non-reactive inputs (e.g. props); reactive
+  // dependencies are tracked automatically by the derived itself. When deps
+  // change, we adjust state during render (React's sanctioned pattern for
+  // prop-derived state): React discards this render's output and immediately
+  // re-renders with the replacement, so a render that ends up abandoned can
+  // never mutate the committed subscription. Creating a `Derived` is cheap:
+  // it is lazy, so it neither computes nor subscribes until its `value` is
+  // read.
+  if (!areInputsEqual(state.deps, deps)) {
+    setState({ derived: createDerived(fn), deps: deps as readonly unknown[] });
   }
 
-  // Dispose the derived on unmount so it drops out of the reactivity graph.
-  // If it is subsequently read again (e.g. a re-render after React StrictMode's
-  // simulated unmount), reading its value will transparently re-subscribe it.
+  // Dispose the derived that was active before this one (on deps change) and
+  // the current one on unmount. Effect cleanup runs after commit, so
+  // disposal is always tied to a committed render. Reading `value` in setup
+  // re-activates a derived that was disposed by React Strict Mode's simulated
+  // unmount: a disposed derived recomputes and re-subscribes on read.
   useEffect(() => {
+    state.derived.value;
     return () => {
-      derivedRef.current?.dispose();
+      state.derived.dispose();
     };
-  }, EMPTY);
+  }, [state.derived]);
 
-  return derivedRef.current;
+  return state.derived;
 }

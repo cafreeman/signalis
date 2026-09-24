@@ -294,4 +294,36 @@ describe('useDerived', () => {
     rerender(<Wrapped multiplier={3} />);
     expect(instances[instances.length - 1]).toBe(second);
   });
+
+  test('resubscribes after Strict Mode simulated remount', async () => {
+    function TestComponent() {
+      const count = useSignal(0);
+      const doubled = useDerived(() => count.value * 2);
+
+      return (
+        <div>
+          <div data-testid="doubled">{doubled.value}</div>
+          <button data-testid="increment" onClick={() => (count.value += 1)}>
+            Increment
+          </button>
+        </div>
+      );
+    }
+
+    const Wrapped = reactor(TestComponent);
+    render(
+      <React.StrictMode>
+        <Wrapped />
+      </React.StrictMode>,
+    );
+
+    expect(screen.getByTestId('doubled').textContent).toBe('0');
+
+    // Strict Mode runs effect cleanup (disposing the derived) and setup again
+    // without a re-render; subsequent signal changes must still update the UI
+    fireEvent.click(screen.getByTestId('increment'));
+    await waitFor(() => {
+      expect(screen.getByTestId('doubled').textContent).toBe('2');
+    });
+  });
 });
