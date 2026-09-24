@@ -15,7 +15,7 @@ Canonical guidance for AI agents (and human contributors) working in this reposi
 - `packages/react` → `@signalis/react`: React bindings; **re-exports all of `@signalis/core`**, so core's public API surface is also react's.
 - `docs/`: VitePress site (deployed via GitHub Pages).
 
-Toolchain: pnpm (pinned via `packageManager` in the root package.json), Node >= 22.12 (pinned via `mise.toml`/`volta`). Local secrets belong in `mise.local.toml` (gitignored), never in `mise.toml`.
+Toolchain: pnpm (pinned via `packageManager` in the root package.json and `mise.toml`), Node (pinned via `mise.toml`, engines requires >= 22.12). Local secrets belong in `mise.local.toml` (gitignored), never in `mise.toml`.
 
 ## Everyday commands
 

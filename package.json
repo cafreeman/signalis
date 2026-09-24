@@ -42,8 +42,5 @@
     "vitepress": "^1.6.4",
     "vitepress-plugin-llms": "^1.14.0",
     "vitest": "^5.0.1"
-  },
-  "volta": {
-    "node": "24.13.1"
   }
 }

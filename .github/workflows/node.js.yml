@@ -12,33 +12,43 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.x, 24.x]
+        # Covers the `engines` range in the root package.json; Node 24
+        # matches the version pinned in the root `mise.toml`
+        node-version: [22, 24]
 
     steps:
       - uses: actions/checkout@v4
 
-      # The pnpm version is read from the root package.json `packageManager`
-      # field, which guarantees it matches the lockfile version
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      # pnpm is installed from the root `mise.toml`
+      - name: Install tools with mise
+        uses: jdx/mise-action@v2
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          install: true
+          cache: true
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: mise exec node@${{ matrix.node-version }} -- pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: mise exec node@${{ matrix.node-version }} -- pnpm lint
 
       - name: Build
-        run: pnpm build
+        run: mise exec node@${{ matrix.node-version }} -- pnpm build
 
       - name: Run tests
-        run: pnpm test
+        run: mise exec node@${{ matrix.node-version }} -- pnpm test
 
   type-check:
     runs-on: ubuntu-latest
@@ -52,14 +62,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      # Node and pnpm versions are pinned in the root `mise.toml`
+      - name: Install tools with mise
+        uses: jdx/mise-action@v2
         with:
-          node-version: 24.x
-          cache: 'pnpm'
+          install: true
+          cache: true
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
