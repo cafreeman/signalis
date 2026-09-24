@@ -16,7 +16,7 @@ import {
   type STATUS,
 } from './state.js';
 import type { ReactiveFunction, ReactiveValue } from './types.js';
-import { assert, reconcileSources } from './utils.js';
+import { assert, reconcileSources, unlinkObservers } from './utils.js';
 
 const DerivedTag = Symbol('Derived');
 
@@ -134,6 +134,25 @@ export class Derived<T> {
         }
       }
     }
+  }
+
+  /**
+   * Reset this `Derived` to its freshly-constructed state: unlink it from all
+   * of its sources, drop its source list, and mark it dirty. A disposed
+   * derived isn't dead, though: because it is lazy, the next time its `value`
+   * is read, `validate` finds it dirty with no sources and `compute` runs the
+   * full first-run path, re-subscribing it to whatever it reads.
+   *
+   * Note that unlinking *alone* would not be safe. The dirty-marking cascade
+   * flows through observer lists, so an unlinked derived would never be
+   * marked dirty again; and `reconcileSources` assumes a computation's
+   * leading (unchanged) sources are still subscribed, so a recompute would
+   * never re-link them. Resetting to the initial state avoids both hazards.
+   */
+  dispose() {
+    unlinkObservers(this, 0);
+    this._sources = null;
+    this._status = DIRTY;
   }
 }
 

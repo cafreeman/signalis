@@ -144,7 +144,9 @@ export class Reaction {
    * @internal
    */
   dispose() {
-    unlinkObservers(this);
+    // Pass 0 as the start index so we unlink from *all* of our sources, no
+    // matter what computation (if any) is running when dispose is called
+    unlinkObservers(this, 0);
     this.isDisposed = true;
     if (this._cleanupFn) {
       this._cleanupFn();

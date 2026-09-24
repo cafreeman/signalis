@@ -6,14 +6,17 @@ import type { ReactiveFunction } from './types.js';
 // Remove a given ReactiveFunction from all of its sources' observer arrays. In essence, this breaks
 // the link between a ReactiveFunction and all of its sources. We use this to "reset" a
 // ReactiveFunction's dependencies prior to re-computing it in order to ensure that we don't
-// leak dependencies between computations
-export function unlinkObservers(target: ReactiveFunction) {
+// leak dependencies between computations. The `startIndex` parameter defaults to the current
+// context index, which is the index where a re-computation's sources diverged from its previous
+// run. When fully disposing of a node we pass 0 explicitly, since the current context belongs to
+// whatever computation happens to be running at disposal time and is unrelated to this node
+export function unlinkObservers(target: ReactiveFunction, startIndex = getContextIndex()) {
   const { _sources: sources } = target;
   if (!sources) {
     return;
   }
 
-  for (let i = getContextIndex(); i < sources.length; i++) {
+  for (let i = startIndex; i < sources.length; i++) {
     const source = sources[i] as Signal<unknown> | Derived<unknown>;
     if (!source._observers || source._observers.length === 0) {
       return;

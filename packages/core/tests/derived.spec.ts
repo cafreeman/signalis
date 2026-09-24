@@ -168,4 +168,88 @@ describe('Derived', () => {
     expect(numKeys.value).toEqual(2);
     expect(spy).toHaveBeenCalledTimes(2);
   });
+
+  test('dispose unsubscribes the derived until it is read again', () => {
+    const foo = createSignal(0);
+    const spy = vi.fn(() => foo.value);
+    const bar = createDerived(spy);
+
+    expect(bar.value).toEqual(0);
+    expect(spy).toHaveBeenCalledOnce();
+
+    bar.dispose();
+
+    foo.value = 1;
+
+    // while disposed, the derived is no longer notified of changes
+    expect(spy).toHaveBeenCalledOnce();
+
+    // reading it again resurrects it: it recomputes and re-subscribes
+    expect(bar.value).toEqual(1);
+    expect(spy).toHaveBeenCalledTimes(2);
+
+    // and it once again reacts to subsequent changes
+    foo.value = 2;
+    expect(bar.value).toEqual(2);
+    expect(spy).toHaveBeenCalledTimes(3);
+  });
+
+  test('changes propagate through a disposed and resurrected derived', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+    const baz = createDerived(() => bar.value);
+
+    expect(baz.value).toEqual(0);
+
+    bar.dispose();
+
+    // resurrect `bar` by reading it; its value hasn't changed yet
+    expect(bar.value).toEqual(0);
+
+    foo.value = 1;
+
+    // the resurrected derived must have re-subscribed to its source, so the
+    // change still cascades through it to its own observers
+    expect(baz.value).toEqual(1);
+  });
+
+  test('disposing a derived that was never read does not break later reads', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+
+    bar.dispose();
+
+    expect(bar.value).toEqual(0);
+
+    foo.value = 1;
+
+    expect(bar.value).toEqual(1);
+  });
+
+  test('dispose does not affect other deriveds sharing the same sources', () => {
+    const foo = createSignal(0);
+    const spyA = vi.fn(() => foo.value);
+    const spyB = vi.fn(() => foo.value);
+
+    const a = createDerived(spyA);
+    const b = createDerived(spyB);
+
+    expect(a.value).toEqual(0);
+    expect(b.value).toEqual(0);
+
+    a.dispose();
+
+    foo.value = 1;
+
+    // `b` was never disposed and still reacts normally
+    expect(b.value).toEqual(1);
+    expect(spyB).toHaveBeenCalledTimes(2);
+
+    // `a` did not recompute while disposed...
+    expect(spyA).toHaveBeenCalledOnce();
+
+    // ...until it is read again
+    expect(a.value).toEqual(1);
+    expect(spyA).toHaveBeenCalledTimes(2);
+  });
 });
