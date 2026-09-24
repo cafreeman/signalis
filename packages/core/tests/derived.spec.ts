@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { batch } from '../src/batch';
 import { createDerived } from '../src/derived';
 import { createSignal } from '../src/signal';
 
@@ -268,5 +269,37 @@ describe('Derived', () => {
     // stale cached value: disposal should mark dependents stale so their next
     // read revalidates (which resurrects `bar` on its next compute)
     expect(baz.value).toEqual(1);
+  });
+
+  test('dispose invalidates dependents for reads inside a batch', () => {
+    const foo = createSignal(0);
+    const sibling = createSignal(0);
+    const bar = createDerived(() => foo.value);
+    const baz = createDerived(() => bar.value + sibling.value);
+
+    expect(baz.value).toEqual(0);
+
+    batch(() => {
+      foo.value = 1;
+      sibling.value = 5;
+      bar.dispose();
+
+      // The dependent must observe both pending writes when it is read before
+      // the batch finishes. A stale-only invalidation returns the old cache.
+      expect(baz.value).toEqual(6);
+    });
+  });
+
+  test('can defer source subscriptions until a render commits', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+
+    bar._beginSourceCollection();
+    expect(bar.value).toEqual(0);
+
+    expect(foo._observers).toBeNull();
+
+    bar._commitSourceCollection();
+    expect(foo._observers).toEqual([bar]);
   });
 });

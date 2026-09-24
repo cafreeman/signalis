@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { describe, test, expect, afterEach } from 'vitest';
-import { useSignal, useDerived, reactor } from '../src/index.js';
+import { createSignal, useSignal, useDerived, reactor } from '../src/index.js';
 
 // Test component for useDerived
 function TestUseDerived({ baseValue = 0 }: { baseValue?: number }) {
@@ -325,5 +325,24 @@ describe('useDerived', () => {
     await waitFor(() => {
       expect(screen.getByTestId('doubled').textContent).toBe('2');
     });
+  });
+
+  test('does not subscribe a derived from a render that suspends before commit', () => {
+    const source = createSignal(0);
+    const never = new Promise<never>(() => {});
+
+    function Suspends() {
+      const derived = useDerived(() => source.value + 1);
+      derived.value;
+      throw never;
+    }
+
+    render(
+      <Suspense fallback={<div>loading</div>}>
+        <Suspends />
+      </Suspense>,
+    );
+
+    expect(source._observers ?? []).toHaveLength(0);
   });
 });

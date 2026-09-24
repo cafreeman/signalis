@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, test, expect, afterEach } from 'vitest';
 import { createSignal, reactor } from '../src/index.js';
@@ -91,5 +91,36 @@ describe('reactor', () => {
     expect(Wrapped1).toBe(Wrapped2);
     expect(Wrapped2).toBe(Wrapped3);
     expect(Wrapped1).toBe(Wrapped3);
+  });
+
+  test('does not subscribe a reactor from a render that suspends before commit', () => {
+    const signal = createSignal(0);
+    const never = new Promise<never>(() => {});
+
+    const Wrapped = reactor(() => {
+      signal.value;
+      return <div>tracked</div>;
+    });
+
+    function Suspends() {
+      throw never;
+    }
+
+    function Parent() {
+      return (
+        <>
+          <Wrapped />
+          <Suspends />
+        </>
+      );
+    }
+
+    render(
+      <Suspense fallback={<div>loading</div>}>
+        <Parent />
+      </Suspense>,
+    );
+
+    expect(signal._observers ?? []).toHaveLength(0);
   });
 });

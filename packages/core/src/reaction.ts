@@ -12,7 +12,7 @@ import {
   STALE,
   type STATUS,
 } from './state.js';
-import type { ReactiveValue } from './types.js';
+import type { Context, ReactiveValue } from './types.js';
 import { reconcileSources, unlinkObservers } from './utils.js';
 
 const ReactionTag = Symbol('Reaction');
@@ -28,6 +28,10 @@ export class Reaction {
   private _fn: () => void | (() => void);
 
   private _cleanupFn?: () => void;
+  private _isCollecting = false;
+  private _hasPendingSources = false;
+  private _pendingContext: Context | null = null;
+  private _pendingContextIndex = 0;
 
   /**
    * @internal
@@ -60,7 +64,13 @@ export class Reaction {
     try {
       const cleanupFn = trapFn();
 
-      reconcileSources(this);
+      if (this._isCollecting) {
+        this._pendingContext = getCurrentContext();
+        this._pendingContextIndex = getContextIndex();
+        this._hasPendingSources = true;
+      } else {
+        reconcileSources(this);
+      }
 
       return cleanupFn;
     } finally {
@@ -143,11 +153,37 @@ export class Reaction {
   /**
    * @internal
    */
+  _beginSourceCollection() {
+    this._isCollecting = true;
+    this._hasPendingSources = false;
+  }
+
+  /**
+   * @internal
+   */
+  _commitSourceCollection() {
+    if (!this._isCollecting) {
+      return;
+    }
+
+    this._isCollecting = false;
+
+    if (this._hasPendingSources) {
+      reconcileSources(this, this._pendingContext, this._pendingContextIndex);
+      this._hasPendingSources = false;
+    }
+  }
+
+  /**
+   * @internal
+   */
   dispose() {
     // Pass 0 as the start index so we unlink from *all* of our sources, no
     // matter what computation (if any) is running when dispose is called
     unlinkObservers(this, 0);
     this.isDisposed = true;
+    this._isCollecting = false;
+    this._hasPendingSources = false;
     if (this._cleanupFn) {
       this._cleanupFn();
     }

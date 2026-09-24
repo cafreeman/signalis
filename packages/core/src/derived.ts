@@ -15,7 +15,7 @@ import {
   STALE,
   type STATUS,
 } from './state.js';
-import type { ReactiveFunction, ReactiveValue } from './types.js';
+import type { Context, ReactiveFunction, ReactiveValue } from './types.js';
 import { assert, reconcileSources, unlinkObservers } from './utils.js';
 
 const DerivedTag = Symbol('Derived');
@@ -27,6 +27,10 @@ export class Derived<T> {
   private _computeFn: () => T;
   private _lastValue?: T;
   private _status: STATUS = DIRTY;
+  private _isCollecting = false;
+  private _hasPendingSources = false;
+  private _pendingContext: Context | null = null;
+  private _pendingContextIndex = 0;
 
   /**
    * @internal
@@ -111,7 +115,13 @@ export class Derived<T> {
 
     const result = this._computeFn();
 
-    reconcileSources(this);
+    if (this._isCollecting) {
+      this._pendingContext = getCurrentContext();
+      this._pendingContextIndex = getContextIndex();
+      this._hasPendingSources = true;
+    } else {
+      reconcileSources(this);
+    }
 
     setCurrentContext(prevContext);
     setContextIndex(prevContextIndex);
@@ -137,6 +147,30 @@ export class Derived<T> {
   }
 
   /**
+   * @internal
+   */
+  _beginSourceCollection() {
+    this._isCollecting = true;
+    this._hasPendingSources = false;
+  }
+
+  /**
+   * @internal
+   */
+  _commitSourceCollection() {
+    if (!this._isCollecting) {
+      return;
+    }
+
+    this._isCollecting = false;
+
+    if (this._hasPendingSources) {
+      reconcileSources(this, this._pendingContext, this._pendingContextIndex);
+      this._hasPendingSources = false;
+    }
+  }
+
+  /**
    * Reset this `Derived` to its freshly-constructed state: unlink it from all
    * of its sources, drop its source list, and mark it dirty. A disposed
    * derived isn't dead, though: because it is lazy, the next time its `value`
@@ -149,21 +183,21 @@ export class Derived<T> {
    * leading (unchanged) sources are still subscribed, so a recompute would
    * never re-link them. Resetting to the initial state avoids both hazards.
    *
-   * Dependents (this derived's own observers) are marked stale so they never
+   * Dependents (this derived's own observers) are invalidated so they never
    * serve values cached from a node that no longer tracks upstream changes;
    * their next read revalidates, which transitively resurrects this node.
    */
   dispose() {
     unlinkObservers(this, 0);
-    // Invalidate dependents: disposal breaks the upstream subscription, so
-    // anything they cached from this node is no longer trustworthy
-    if (this._observers) {
-      for (let i = 0; i < this._observers.length; i++) {
-        this._observers[i]?.markUpdate(STALE);
-      }
-    }
+    // Invalidate dependents through the batch-aware path: disposal breaks the
+    // upstream subscription, so anything they cached from this node is no
+    // longer trustworthy. DIRTY is required here because a dependent read
+    // inside a batch must recompute immediately when this update is pulled.
+    markUpdates(this, DIRTY);
     this._sources = null;
     this._status = DIRTY;
+    this._isCollecting = false;
+    this._hasPendingSources = false;
   }
 }
 

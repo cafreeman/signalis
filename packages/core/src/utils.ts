@@ -54,10 +54,11 @@ export function assert(condition: any, msg?: string): asserts condition {
 // This function is responsible for all of the bookkeeping we need to do after running a reactive
 // computation in order to correctly track/update all of a computation's dependencies. Highly
 // influenced by Reactively's extremely clever optimization work here https://github.com/modderme123/reactively/commit/fde309bb2966e5d382868169f9b8905532596ec5#diff-f63fb32fca85d8e177d6400ce078818a4815b80ac7a3319b60d3507354890992
-export function reconcileSources(node: ReactiveFunction) {
-  const context = getCurrentContext();
-  const idx = getContextIndex();
-
+export function reconcileSources(
+  node: ReactiveFunction,
+  context = getCurrentContext(),
+  idx = getContextIndex(),
+) {
   // If a current context exists, it means we encountered at least one dependency that has changed
   // (or that it's the very first run of the reactive function)
   if (context) {

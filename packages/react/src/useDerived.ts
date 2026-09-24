@@ -45,13 +45,22 @@ export function useDerived<T>(fn: () => T, deps: DependencyList = EMPTY): Derive
     setState({ derived: createDerived(fn), deps: deps as readonly unknown[] });
   }
 
-  // Dispose the derived that was active before this one (on deps change) and
-  // the current one on unmount. Effect cleanup runs after commit, so
-  // disposal is always tied to a committed render. Reading `value` in setup
-  // re-activates a derived that was disposed by React Strict Mode's simulated
-  // unmount: a disposed derived recomputes and re-subscribes on read.
+  // Reading a derived normally mutates the reactive graph by subscribing it
+  // to its sources. Defer that reconciliation until after commit so a render
+  // React abandons (for example, after Suspense) leaves no orphaned
+  // subscriptions behind.
+  state.derived._beginSourceCollection();
+
   useEffect(() => {
+    state.derived._commitSourceCollection();
+    // Strict Mode runs cleanup and setup without a render in between.
+    // Re-reading here resurrects a derived that cleanup disposed.
     state.derived.value;
+  });
+
+  // Dispose the derived that was active before this one (on deps change) and
+  // the current one on unmount. Cleanup only runs for committed effects.
+  useEffect(() => {
     return () => {
       state.derived.dispose();
     };
