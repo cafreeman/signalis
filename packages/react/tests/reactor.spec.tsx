@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useLayoutEffect } from 'react';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, test, expect, afterEach } from 'vitest';
 import { createSignal, reactor } from '../src/index.js';
@@ -122,5 +122,22 @@ describe('reactor', () => {
     );
 
     expect(signal._observers ?? []).toHaveLength(0);
+  });
+
+  test('catches signal changes made by ancestor layout effects on mount', () => {
+    const signal = createSignal(0);
+    const Wrapped = reactor(() => <div data-testid="value">{signal.value}</div>);
+
+    function Parent() {
+      useLayoutEffect(() => {
+        signal.value = 1;
+      }, []);
+
+      return <Wrapped />;
+    }
+
+    render(<Parent />);
+
+    expect(screen.getByTestId('value').textContent).toBe('1');
   });
 });

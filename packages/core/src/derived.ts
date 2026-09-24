@@ -151,7 +151,6 @@ export class Derived<T> {
    */
   _beginSourceCollection() {
     this._isCollecting = true;
-    this._hasPendingSources = false;
   }
 
   /**

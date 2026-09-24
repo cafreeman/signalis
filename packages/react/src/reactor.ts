@@ -39,8 +39,12 @@ const handler: ProxyHandler<FunctionComponent<any>> = {
         reactionRef.current = new Reaction(() => {
           forceUpdate();
         });
-        forceUpdate();
       }
+
+      // An ancestor layout effect may write a signal after this component
+      // rendered but before the reaction's passive effect subscribed. Render
+      // once after subscribing so the component observes that write.
+      forceUpdate();
 
       return () => {
         reactionRef.current!.dispose();

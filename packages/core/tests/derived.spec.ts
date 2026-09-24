@@ -302,4 +302,40 @@ describe('Derived', () => {
     bar._commitSourceCollection();
     expect(foo._observers).toEqual([bar]);
   });
+
+  test('retains pending sources when collection restarts before commit', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+
+    bar._beginSourceCollection();
+    expect(bar.value).toEqual(0);
+
+    // A render may restart before passive effects commit. The second
+    // collection has no computation because the derived is already clean, so
+    // it must not discard the first render's pending sources.
+    bar._beginSourceCollection();
+    bar._commitSourceCollection();
+
+    expect(foo._observers).toEqual([bar]);
+  });
+
+  test('preserves unchanged leading sources during deferred commits', () => {
+    const first = createSignal(0);
+    const previous = createSignal(0);
+    const next = createSignal(0);
+    let second = previous;
+    const total = createDerived(() => first.value + second.value);
+
+    expect(total.value).toEqual(0);
+
+    total._beginSourceCollection();
+    second = next;
+    first.value = 1;
+    expect(total.value).toEqual(1);
+    total._commitSourceCollection();
+
+    expect(first._observers).toEqual([total]);
+    expect(previous._observers).toEqual([]);
+    expect(next._observers).toEqual([total]);
+  });
 });

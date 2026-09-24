@@ -62,7 +62,7 @@ export function reconcileSources(
   // If a current context exists, it means we encountered at least one dependency that has changed
   // (or that it's the very first run of the reactive function)
   if (context) {
-    unlinkObservers(node);
+    unlinkObservers(node, idx);
 
     // if the node already has sources but the context index is > 0, it means that the node's list
     // of dependencies is partially unchanged (from the first spot up to wherever the context index
@@ -97,7 +97,7 @@ export function reconcileSources(
     // that while we didn't gain any new sources, or change the order in which they were referenced
     // (which would be caught above), we did *lose* some dependencies, and so we still need to
     // remove ourselves from the sources we dropped and trim our sources list to match
-    unlinkObservers(node);
+    unlinkObservers(node, idx);
     node._sources.length = idx;
   }
 }
