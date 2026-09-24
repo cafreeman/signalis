@@ -54,7 +54,7 @@ export class ResourceWithSource<ValueType, SourceType> {
 
   constructor(
     source: ReactiveValue<SourceType>,
-    fetcher: FetcherWithSource<SourceType, ValueType>
+    fetcher: FetcherWithSource<SourceType, ValueType>,
   ) {
     this.fetcher = fetcher;
     createEffect(() => {
@@ -92,11 +92,11 @@ export class ResourceWithSource<ValueType, SourceType> {
 export function createResource<ValueType>(fetcher: Fetcher<ValueType>): Resource<ValueType>;
 export function createResource<SourceType, ValueType>(
   source: ReactiveValue<SourceType>,
-  fetcher: FetcherWithSource<SourceType, ValueType>
+  fetcher: FetcherWithSource<SourceType, ValueType>,
 ): ResourceWithSource<ValueType, SourceType>;
 export function createResource<SourceType, ValueType>(
   sourceOrFetcher: ReactiveValue<SourceType> | Fetcher<ValueType>,
-  fetcher?: FetcherWithSource<SourceType, ValueType>
+  fetcher?: FetcherWithSource<SourceType, ValueType>,
 ): ResourceWithSource<ValueType, SourceType> | Resource<ValueType> {
   if (typeof sourceOrFetcher === 'function') {
     return new Resource<ValueType>(sourceOrFetcher);

@@ -40,10 +40,11 @@ pnpm release:dry
 ```
 
 The release process automatically:
+
 1. Applies changesets and bumps versions
 2. Builds all packages
 3. Creates git tags
 4. Publishes to npm
 5. Pushes changes to GitHub
 
-For detailed release guidelines, see [Release Process Documentation](./.cursor/rules/release-process.mdc).
+For contribution and release guidelines (including how to track changes with changesets), see [AGENTS.md](./AGENTS.md).

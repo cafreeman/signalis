@@ -10,7 +10,7 @@ function TestUseSignalEffect({ initialValue = 0 }: { initialValue?: number }) {
 
   useSignalEffect(() => {
     // Access the signal value to create a dependency
-    const currentValue = signal.value;
+    signal.value;
     effectCount.value = effectCount.value + 1;
     return () => {
       // Cleanup function

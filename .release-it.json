@@ -17,7 +17,7 @@
       "pnpm build"
     ],
     "after:release": [
-      "git tag v$(node -p \"require('./packages/react/package.json').version\")",
+      "git tag v$(node -p \"require('./packages/core/package.json').version\")",
       "git push --follow-tags",
       "pnpm -r publish --access public"
     ]

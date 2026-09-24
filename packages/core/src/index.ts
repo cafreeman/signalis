@@ -5,4 +5,6 @@ export { batch } from './batch.js';
 export { Reaction, isReaction } from './reaction.js';
 export { createResource, type Resource, type ResourceWithSource } from './resource.js';
 export { createStore } from './store.js';
+export { untrack } from './untrack.js';
 export { update } from './update.js';
+export { when } from './when.js';

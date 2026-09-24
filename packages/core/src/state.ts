@@ -20,7 +20,10 @@ class State {
   scheduledReactions: Array<Reaction> = [];
   pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
   batchCount = 0;
-  suspended = false;
+  // Tracking suspension is implemented as a counter rather than a boolean so
+  // that `untrack` calls nest correctly: an inner `untrack` ending must not
+  // re-enable tracking while an outer `untrack` is still active
+  suspendedCount = 0;
 }
 
 const STATE = new State();
@@ -68,7 +71,7 @@ export function batchCount(): number {
 }
 
 export function markDependency(v: ReactiveValue): void {
-  if (STATE.suspended) {
+  if (STATE.suspendedCount > 0) {
     return;
   }
 
@@ -157,7 +160,7 @@ function runPendingUpdates(): void {
 }
 
 export function checkPendingUpdate(
-  v: Signal<unknown> | Derived<unknown> | Reaction | undefined
+  v: Signal<unknown> | Derived<unknown> | Reaction | undefined,
 ): (() => void) | undefined {
   if (!v) {
     return;
@@ -176,9 +179,9 @@ export function checkPendingUpdate(
 }
 
 export function suspendTracking() {
-  STATE.suspended = true;
+  STATE.suspendedCount++;
 }
 
 export function resumeTracking() {
-  STATE.suspended = false;
+  STATE.suspendedCount--;
 }

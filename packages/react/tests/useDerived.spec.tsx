@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { describe, test, expect, afterEach } from 'vitest';
-import { useSignal, useDerived, reactor } from '../src/index.js';
+import { createSignal, useSignal, useDerived, reactor } from '../src/index.js';
 
 // Test component for useDerived
 function TestUseDerived({ baseValue = 0 }: { baseValue?: number }) {
@@ -227,5 +227,122 @@ describe('useDerived', () => {
     await waitFor(() => {
       expect(screen.getByTestId('doubled').textContent).toBe('2');
     });
+  });
+
+  test('preserves derived instance identity across re-renders', async () => {
+    const instances: Array<unknown> = [];
+
+    function TestComponent(_props: { trigger: number }) {
+      const count = useSignal(0);
+      const doubled = useDerived(() => count.value * 2);
+      instances.push(doubled);
+
+      return (
+        <div>
+          <div data-testid="doubled">{doubled.value}</div>
+          <button data-testid="increment" onClick={() => (count.value += 1)}>
+            Increment
+          </button>
+        </div>
+      );
+    }
+
+    const Wrapped = reactor(TestComponent);
+    const { rerender } = render(<Wrapped trigger={1} />);
+
+    // signal-driven re-render
+    fireEvent.click(screen.getByTestId('increment'));
+    await waitFor(() => {
+      expect(screen.getByTestId('doubled').textContent).toBe('2');
+    });
+
+    // parent-driven re-renders, deps unchanged
+    rerender(<Wrapped trigger={2} />);
+    rerender(<Wrapped trigger={3} />);
+
+    // re-renders actually happened, and the derived instance never changed
+    expect(instances.length).toBeGreaterThanOrEqual(4);
+    expect(instances.every((instance) => instance === instances[0])).toBe(true);
+  });
+
+  test('returns a new derived instance only when deps change', () => {
+    const instances: Array<unknown> = [];
+
+    function TestComponent({ multiplier }: { multiplier: number }) {
+      const price = useSignal(100);
+      const total = useDerived(() => price.value * multiplier, [multiplier]);
+      instances.push(total);
+
+      return <div data-testid="total">{total.value}</div>;
+    }
+
+    const Wrapped = reactor(TestComponent);
+    const { rerender } = render(<Wrapped multiplier={2} />);
+
+    // same deps value: parent re-renders (and reactor's mount re-render) must
+    // not recreate the derived
+    rerender(<Wrapped multiplier={2} />);
+    expect(instances.length).toBeGreaterThanOrEqual(2);
+    expect(instances.every((instance) => instance === instances[0])).toBe(true);
+
+    // deps value changed: a fresh instance (with the fresh closure) is intended
+    rerender(<Wrapped multiplier={3} />);
+    const second = instances[instances.length - 1];
+    expect(second).not.toBe(instances[0]);
+
+    // and it is stable again from there
+    rerender(<Wrapped multiplier={3} />);
+    expect(instances[instances.length - 1]).toBe(second);
+  });
+
+  test('resubscribes after Strict Mode simulated remount', async () => {
+    function TestComponent() {
+      const count = useSignal(0);
+      const doubled = useDerived(() => count.value * 2);
+
+      return (
+        <div>
+          <div data-testid="doubled">{doubled.value}</div>
+          <button data-testid="increment" onClick={() => (count.value += 1)}>
+            Increment
+          </button>
+        </div>
+      );
+    }
+
+    const Wrapped = reactor(TestComponent);
+    render(
+      <React.StrictMode>
+        <Wrapped />
+      </React.StrictMode>,
+    );
+
+    expect(screen.getByTestId('doubled').textContent).toBe('0');
+
+    // Strict Mode runs effect cleanup (disposing the derived) and setup again
+    // without a re-render; subsequent signal changes must still update the UI
+    fireEvent.click(screen.getByTestId('increment'));
+    await waitFor(() => {
+      expect(screen.getByTestId('doubled').textContent).toBe('2');
+    });
+  });
+
+  test('does not subscribe a derived from a render that suspends before commit', () => {
+    const source = createSignal(0);
+    const never = new Promise<never>(() => {});
+
+    function Suspends() {
+      const derived = useDerived(() => source.value + 1);
+      derived.value;
+      throw never;
+    }
+
+    render(
+      <Suspense fallback={<div>loading</div>}>
+        <Suspends />
+      </Suspense>,
+    );
+
+    expect(source._observers ?? []).toHaveLength(0);
   });
 });

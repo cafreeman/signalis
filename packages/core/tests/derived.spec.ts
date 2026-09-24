@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { batch } from '../src/batch';
 import { createDerived } from '../src/derived';
 import { createSignal } from '../src/signal';
 
@@ -167,5 +168,174 @@ describe('Derived', () => {
 
     expect(numKeys.value).toEqual(2);
     expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  test('dispose unsubscribes the derived until it is read again', () => {
+    const foo = createSignal(0);
+    const spy = vi.fn(() => foo.value);
+    const bar = createDerived(spy);
+
+    expect(bar.value).toEqual(0);
+    expect(spy).toHaveBeenCalledOnce();
+
+    bar.dispose();
+
+    foo.value = 1;
+
+    // while disposed, the derived is no longer notified of changes
+    expect(spy).toHaveBeenCalledOnce();
+
+    // reading it again resurrects it: it recomputes and re-subscribes
+    expect(bar.value).toEqual(1);
+    expect(spy).toHaveBeenCalledTimes(2);
+
+    // and it once again reacts to subsequent changes
+    foo.value = 2;
+    expect(bar.value).toEqual(2);
+    expect(spy).toHaveBeenCalledTimes(3);
+  });
+
+  test('changes propagate through a disposed and resurrected derived', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+    const baz = createDerived(() => bar.value);
+
+    expect(baz.value).toEqual(0);
+
+    bar.dispose();
+
+    // resurrect `bar` by reading it; its value hasn't changed yet
+    expect(bar.value).toEqual(0);
+
+    foo.value = 1;
+
+    // the resurrected derived must have re-subscribed to its source, so the
+    // change still cascades through it to its own observers
+    expect(baz.value).toEqual(1);
+  });
+
+  test('disposing a derived that was never read does not break later reads', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+
+    bar.dispose();
+
+    expect(bar.value).toEqual(0);
+
+    foo.value = 1;
+
+    expect(bar.value).toEqual(1);
+  });
+
+  test('dispose does not affect other deriveds sharing the same sources', () => {
+    const foo = createSignal(0);
+    const spyA = vi.fn(() => foo.value);
+    const spyB = vi.fn(() => foo.value);
+
+    const a = createDerived(spyA);
+    const b = createDerived(spyB);
+
+    expect(a.value).toEqual(0);
+    expect(b.value).toEqual(0);
+
+    a.dispose();
+
+    foo.value = 1;
+
+    // `b` was never disposed and still reacts normally
+    expect(b.value).toEqual(1);
+    expect(spyB).toHaveBeenCalledTimes(2);
+
+    // `a` did not recompute while disposed...
+    expect(spyA).toHaveBeenCalledOnce();
+
+    // ...until it is read again
+    expect(a.value).toEqual(1);
+    expect(spyA).toHaveBeenCalledTimes(2);
+  });
+
+  test('dispose invalidates dependents instead of leaving them stale', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+    const baz = createDerived(() => bar.value);
+
+    expect(baz.value).toEqual(0);
+
+    bar.dispose();
+
+    foo.value = 1;
+
+    // `bar` is disposed and never read again, but `baz` must not serve its
+    // stale cached value: disposal should mark dependents stale so their next
+    // read revalidates (which resurrects `bar` on its next compute)
+    expect(baz.value).toEqual(1);
+  });
+
+  test('dispose invalidates dependents for reads inside a batch', () => {
+    const foo = createSignal(0);
+    const sibling = createSignal(0);
+    const bar = createDerived(() => foo.value);
+    const baz = createDerived(() => bar.value + sibling.value);
+
+    expect(baz.value).toEqual(0);
+
+    batch(() => {
+      foo.value = 1;
+      sibling.value = 5;
+      bar.dispose();
+
+      // The dependent must observe both pending writes when it is read before
+      // the batch finishes. A stale-only invalidation returns the old cache.
+      expect(baz.value).toEqual(6);
+    });
+  });
+
+  test('can defer source subscriptions until a render commits', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+
+    bar._beginSourceCollection();
+    expect(bar.value).toEqual(0);
+
+    expect(foo._observers).toBeNull();
+
+    bar._commitSourceCollection();
+    expect(foo._observers).toEqual([bar]);
+  });
+
+  test('retains pending sources when collection restarts before commit', () => {
+    const foo = createSignal(0);
+    const bar = createDerived(() => foo.value);
+
+    bar._beginSourceCollection();
+    expect(bar.value).toEqual(0);
+
+    // A render may restart before passive effects commit. The second
+    // collection has no computation because the derived is already clean, so
+    // it must not discard the first render's pending sources.
+    bar._beginSourceCollection();
+    bar._commitSourceCollection();
+
+    expect(foo._observers).toEqual([bar]);
+  });
+
+  test('preserves unchanged leading sources during deferred commits', () => {
+    const first = createSignal(0);
+    const previous = createSignal(0);
+    const next = createSignal(0);
+    let second = previous;
+    const total = createDerived(() => first.value + second.value);
+
+    expect(total.value).toEqual(0);
+
+    total._beginSourceCollection();
+    second = next;
+    first.value = 1;
+    expect(total.value).toEqual(1);
+    total._commitSourceCollection();
+
+    expect(first._observers).toEqual([total]);
+    expect(previous._observers).toEqual([]);
+    expect(next._observers).toEqual([total]);
   });
 });

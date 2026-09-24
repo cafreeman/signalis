@@ -65,7 +65,7 @@ export function createSignal(): Signal<unknown>;
 export function createSignal<T>(value: T, isEqual?: Equality<T> | false): Signal<T>;
 export function createSignal<T>(
   value?: T | null | undefined,
-  isEqual?: Equality<T> | false
+  isEqual?: Equality<T> | false,
 ): Signal<T> | Signal<unknown> {
   if (arguments.length === 0) {
     return new _Signal(null, neverEqual);

@@ -6,14 +6,17 @@ import type { ReactiveFunction } from './types.js';
 // Remove a given ReactiveFunction from all of its sources' observer arrays. In essence, this breaks
 // the link between a ReactiveFunction and all of its sources. We use this to "reset" a
 // ReactiveFunction's dependencies prior to re-computing it in order to ensure that we don't
-// leak dependencies between computations
-export function unlinkObservers(target: ReactiveFunction) {
+// leak dependencies between computations. The `startIndex` parameter defaults to the current
+// context index, which is the index where a re-computation's sources diverged from its previous
+// run. When fully disposing of a node we pass 0 explicitly, since the current context belongs to
+// whatever computation happens to be running at disposal time and is unrelated to this node
+export function unlinkObservers(target: ReactiveFunction, startIndex = getContextIndex()) {
   const { _sources: sources } = target;
   if (!sources) {
     return;
   }
 
-  for (let i = getContextIndex(); i < sources.length; i++) {
+  for (let i = startIndex; i < sources.length; i++) {
     const source = sources[i] as Signal<unknown> | Derived<unknown>;
     if (!source._observers || source._observers.length === 0) {
       return;
@@ -51,14 +54,15 @@ export function assert(condition: any, msg?: string): asserts condition {
 // This function is responsible for all of the bookkeeping we need to do after running a reactive
 // computation in order to correctly track/update all of a computation's dependencies. Highly
 // influenced by Reactively's extremely clever optimization work here https://github.com/modderme123/reactively/commit/fde309bb2966e5d382868169f9b8905532596ec5#diff-f63fb32fca85d8e177d6400ce078818a4815b80ac7a3319b60d3507354890992
-export function reconcileSources(node: ReactiveFunction) {
-  const context = getCurrentContext();
-  const idx = getContextIndex();
-
+export function reconcileSources(
+  node: ReactiveFunction,
+  context = getCurrentContext(),
+  idx = getContextIndex(),
+) {
   // If a current context exists, it means we encountered at least one dependency that has changed
   // (or that it's the very first run of the reactive function)
   if (context) {
-    unlinkObservers(node);
+    unlinkObservers(node, idx);
 
     // if the node already has sources but the context index is > 0, it means that the node's list
     // of dependencies is partially unchanged (from the first spot up to wherever the context index
@@ -93,7 +97,7 @@ export function reconcileSources(node: ReactiveFunction) {
     // that while we didn't gain any new sources, or change the order in which they were referenced
     // (which would be caught above), we did *lose* some dependencies, and so we still need to
     // remove ourselves from the sources we dropped and trim our sources list to match
-    unlinkObservers(node);
+    unlinkObservers(node, idx);
     node._sources.length = idx;
   }
 }

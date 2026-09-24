@@ -27,16 +27,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      # Node and pnpm versions are pinned in the root `mise.toml`
+      - name: Install tools with mise
+        uses: jdx/mise-action@v2
         with:
-          version: 9
+          install: true
+          cache: true
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
         with:
-          node-version: 18
-          cache: pnpm
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
