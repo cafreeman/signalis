@@ -102,7 +102,7 @@ describe('useSignal', () => {
       return 100;
     };
 
-    function Component({ trigger }: { trigger: number }) {
+    function Component(_props: { trigger: number }) {
       const signal = useSignal(expensiveComputation());
       return <div data-testid="value">{signal.value}</div>;
     }
@@ -120,7 +120,7 @@ describe('useSignal', () => {
   test('lazy initializer function only called once', () => {
     let computeCount = 0;
 
-    function Component({ trigger }: { trigger: number }) {
+    function Component(_props: { trigger: number }) {
       const signal = useSignal(() => {
         computeCount++;
         return 100;
@@ -171,7 +171,7 @@ describe('useSignal', () => {
   test('type assertions for all useSignal modes', () => {
     function TypeTestComponent() {
       // Test all possible useSignal modes
-      
+
       // 1. No arguments - should return Signal<unknown>
       const noArgs = useSignal();
       expectTypeOf(noArgs).toEqualTypeOf<Signal<unknown>>();
