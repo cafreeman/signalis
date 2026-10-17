@@ -2,6 +2,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Benchmark output (machine- and run-specific; see packages/bench/README.md)
+packages/bench/results/
+
 packages/core/old-src
 packages/core/__scratch.ts
 .cursor/plans

@@ -1,0 +1,21 @@
+{
+  "name": "@signalis/bench",
+  "version": "0.0.0",
+  "description": "Cross-framework reactive graph benchmark for signalis",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "bench": "pnpm --filter @signalis/core build && node --import tsx src/bench.ts"
+  },
+  "devDependencies": {
+    "@preact/signals-core": "^1.14.4",
+    "@signalis/core": "workspace:*",
+    "@solidjs/signals": "^2.0.0-rc.0",
+    "@types/node": "^24.1.0",
+    "@vue/reactivity": "^3.5.44",
+    "alien-signals": "^3.2.1",
+    "signal-polyfill": "^0.2.2",
+    "smol-toml": "^1.9.1",
+    "tsx": "^4.23.15"
+  }
+}
