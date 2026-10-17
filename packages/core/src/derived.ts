@@ -16,7 +16,7 @@ import {
   type STATUS,
 } from './state.js';
 import type { Context, ReactiveFunction, ReactiveValue } from './types.js';
-import { assert, reconcileSources, unlinkObservers } from './utils.js';
+import { assert, hasInvalidatedSource, reconcileSources, unlinkObservers } from './utils.js';
 
 const DerivedTag = Symbol('Derived');
 
@@ -166,7 +166,23 @@ export class Derived<T> {
     if (this._hasPendingSources) {
       reconcileSources(this, this._pendingContext, this._pendingContextIndex);
       this._hasPendingSources = false;
+
+      // A source we just linked may have been invalidated since we read it, and we weren't an
+      // observer yet, so it couldn't mark us. Marking ourselves STALE makes the next read revalidate instead of serving our cached
+      // value, and tells our own observers
+      if (hasInvalidatedSource(this, this._pendingContextIndex)) {
+        this.markUpdate(STALE);
+      }
     }
+  }
+
+  /**
+   * Whether this derived's cached value is known to be current (see `hasInvalidatedSource`).
+   *
+   * @internal
+   */
+  _isClean(): boolean {
+    return this._status === CLEAN;
   }
 
   /**

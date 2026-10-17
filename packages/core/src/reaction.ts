@@ -13,7 +13,7 @@ import {
   type STATUS,
 } from './state.js';
 import type { Context, ReactiveValue } from './types.js';
-import { reconcileSources, unlinkObservers } from './utils.js';
+import { hasInvalidatedSource, reconcileSources, unlinkObservers } from './utils.js';
 
 const ReactionTag = Symbol('Reaction');
 
@@ -171,6 +171,13 @@ export class Reaction {
     if (this._hasPendingSources) {
       reconcileSources(this, this._pendingContext, this._pendingContextIndex);
       this._hasPendingSources = false;
+
+      // A source we just linked may have been invalidated since we read it, and we weren't an
+      // observer yet, so it couldn't mark us. Marking ourselves STALE queues us to check our sources and run if one of them
+      // changed
+      if (hasInvalidatedSource(this, this._pendingContextIndex)) {
+        this.markUpdate(STALE);
+      }
     }
   }
 

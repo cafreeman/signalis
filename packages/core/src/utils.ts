@@ -51,6 +51,26 @@ export function assert(condition: any, msg?: string): asserts condition {
   }
 }
 
+// Deferred source collection links a computation to sources it read some time earlier (during a
+// render, say), and a derived source may have been invalidated in between. The computation wasn't
+// an observer of that source yet, so the invalidation never marked it. This reports whether any
+// source linked from `startIndex` onward isn't clean, so the caller can mark itself STALE and
+// revalidate. Leading sources before `startIndex` were linked all along and were marked normally.
+export function hasInvalidatedSource(node: ReactiveFunction, startIndex: number): boolean {
+  const { _sources: sources } = node;
+  if (!sources) {
+    return false;
+  }
+
+  for (let i = startIndex; i < sources.length; i++) {
+    if (!sources[i]!._isClean()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // This function is responsible for all of the bookkeeping we need to do after running a reactive
 // computation in order to correctly track/update all of a computation's dependencies. Highly
 // influenced by Reactively's extremely clever optimization work here https://github.com/modderme123/reactively/commit/fde309bb2966e5d382868169f9b8905532596ec5#diff-f63fb32fca85d8e177d6400ce078818a4815b80ac7a3319b60d3507354890992
