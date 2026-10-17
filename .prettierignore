@@ -2,3 +2,4 @@ dist
 pnpm-lock.yaml
 docs/api
 .cursor
+.claude/skills/openspec-*
