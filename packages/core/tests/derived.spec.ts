@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { batch } from '../src/batch';
 import { createDerived } from '../src/derived';
+import { createEffect } from '../src/effect';
 import { createSignal } from '../src/signal';
 
 describe('Derived', () => {
@@ -353,5 +354,29 @@ describe('Derived', () => {
 
     total._commitSourceCollection();
     expect(total.value).toEqual(5);
+  });
+
+  test('propagates through a node that goes from STALE to DIRTY', () => {
+    // `bottom` is marked STALE through `middle` first, then DIRTY directly by `right`'s change. Its
+    // observers only hear about the first transition, which must be enough for them to update
+    const left = createSignal(1);
+    const right = createSignal(1);
+    const middle = createDerived(() => left.value * 2);
+    const bottom = createDerived(() => middle.value + right.value);
+    const top = createDerived(() => bottom.value * 10);
+
+    const values: Array<number> = [];
+    createEffect(() => {
+      values.push(top.value);
+    });
+
+    batch(() => {
+      left.value = 2;
+      right.value = 2;
+    });
+    right.value = 3;
+    left.value = 3;
+
+    expect(values).toEqual([30, 60, 70, 90]);
   });
 });

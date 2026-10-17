@@ -310,4 +310,28 @@ describe('reaction', () => {
       expect(version).toEqual(1);
     });
   });
+
+  test('hears later updates after a deferred commit links it to an invalidated derived', () => {
+    const upstream = createSignal(1);
+    const other = createSignal(1);
+    const doubled = createDerived(() => upstream.value * 2);
+    const total = createDerived(() => doubled.value + other.value);
+    const fnSpy = vi.fn();
+    const reaction = new Reaction(fnSpy);
+
+    reaction._beginSourceCollection();
+    reaction.trap(() => {
+      total.value;
+    });
+
+    // Written between "render" and "commit": `total` goes STALE before the reaction is linked to it
+    upstream.value = 2;
+    reaction._commitSourceCollection();
+
+    // `total` now goes from STALE to DIRTY, which it doesn't announce to its observers; the
+    // reaction must still find out that it changed
+    other.value = 2;
+
+    expect(fnSpy).toHaveBeenCalledOnce();
+  });
 });

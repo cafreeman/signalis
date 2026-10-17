@@ -52,10 +52,12 @@ export function assert(condition: any, msg?: string): asserts condition {
 }
 
 // Deferred source collection links a computation to sources it read some time earlier (during a
-// render, say), and a derived source may have been invalidated in between. The computation wasn't
-// an observer of that source yet, so the invalidation never marked it. This reports whether any
-// source linked from `startIndex` onward isn't clean, so the caller can mark itself STALE and
-// revalidate. Leading sources before `startIndex` were linked all along and were marked normally.
+// render, say), and a derived source may have been invalidated in between. A derived only notifies
+// its observers when it first leaves CLEAN, so a computation linked to one that is already STALE or
+// DIRTY would never hear about it, and would keep serving a value computed from the old state. This
+// reports whether any source linked from `startIndex` onward is in that state, so the caller can
+// mark itself STALE and revalidate. Leading sources before `startIndex` were linked all along and
+// were notified normally.
 export function hasInvalidatedSource(node: ReactiveFunction, startIndex: number): boolean {
   const { _sources: sources } = node;
   if (!sources) {
