@@ -338,4 +338,20 @@ describe('Derived', () => {
     expect(previous._observers).toEqual([]);
     expect(next._observers).toEqual([total]);
   });
+
+  test('revalidates after a deferred commit links it to an invalidated source', () => {
+    const source = createSignal(1);
+    const doubled = createDerived(() => source.value * 2);
+    const total = createDerived(() => doubled.value + 1);
+
+    total._beginSourceCollection();
+    expect(total.value).toEqual(3);
+
+    // Written between "render" and "commit": `doubled` is already subscribed to `source`, so it
+    // goes DIRTY, but `total` isn't linked to it yet and hears nothing
+    source.value = 2;
+
+    total._commitSourceCollection();
+    expect(total.value).toEqual(5);
+  });
 });

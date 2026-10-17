@@ -35,8 +35,19 @@ export class _Signal<T> {
     }
   }
 
+  // A signal always holds its current value, so there's nothing to validate. Computations call this
+  // on each of their sources without checking whether the source is a signal or a derived.
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   validate() {}
+
+  /**
+   * Always true: a signal's value is current by definition (see `hasInvalidatedSource`).
+   *
+   * @internal
+   */
+  _isClean(): boolean {
+    return true;
+  }
 
   get value() {
     markDependency(this);
