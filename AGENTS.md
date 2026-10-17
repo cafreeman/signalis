@@ -5,7 +5,7 @@ Canonical guidance for AI agents (and human contributors) working in this reposi
 ## Hard rules
 
 - **Don't commit unless explicitly asked.** Leave the working tree for review.
-- **Never run `pnpm release`, `pnpm publish`, or push tags/branches.** Releases publish to npm and are human-triggered only. `pnpm release:dry` is safe to preview (verified on release-it 21: hooks are displayed but not executed in dry-run).
+- **Never run `pnpm release` or `pnpm publish`, and never push tags.** Releases publish to npm and are human-triggered only. Pushing feature branches and opening PRs is fine. `pnpm release:dry` is safe to preview (verified on release-it 21: hooks are displayed but not executed in dry-run).
 - **Never hand-edit `packages/*/CHANGELOG.md`.** Changelogs are generated from changeset files at release time.
 - **Every change that affects a published package needs a changeset** (see below).
 
@@ -13,6 +13,7 @@ Canonical guidance for AI agents (and human contributors) working in this reposi
 
 - `packages/core` → `@signalis/core`: the reactivity engine (signals, derived, effects, reactions, resources, stores).
 - `packages/react` → `@signalis/react`: React bindings; **re-exports all of `@signalis/core`**, so core's public API surface is also react's.
+- `packages/bench` → `@signalis/bench`: private cross-framework benchmark harness (never published; ignored by changesets). See its README.
 - `docs/`: VitePress site (deployed via GitHub Pages).
 
 Toolchain: pnpm (pinned via `packageManager` in the root package.json and `mise.toml`), Node (pinned via `mise.toml`, engines requires >= 22.12). Local secrets belong in `mise.local.toml` (gitignored), never in `mise.toml`.
@@ -28,6 +29,7 @@ pnpm lint:fix       # oxlint with auto-fix
 pnpm test           # vitest, all packages
 pnpm build          # vite build + type declarations, all packages
 pnpm clean          # remove dist directories
+pnpm bench          # cross-framework benchmarks (see packages/bench/README.md)
 pnpm docs:dev       # VitePress docs dev server
 ```
 
@@ -83,8 +85,8 @@ type(scope): subject
 - optional detail bullets
 ```
 
-Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
-Scopes: `core`, `react`, `root` (config/tooling).
+Types: `feat`, `fix`, `perf`, `docs`, `refactor`, `test`, `chore`. Use `perf` for performance work with no API change (it still needs a changeset when it touches a published package); keep `refactor` for changes with no user-facing effect.
+Scopes: `core`, `react`, `bench` (the private benchmark package), `root` (config/tooling).
 Example: `fix(core): flush pending updates when a batch callback throws`.
 
 ## How a release works (reference — humans trigger this)

@@ -13,6 +13,7 @@
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "test": "pnpm -r test",
+    "bench": "pnpm --filter @signalis/bench run bench",
     "build": "pnpm build:ts && pnpm build:types",
     "build:ts": "pnpm --filter core --filter react run build",
     "build:types": "pnpm --filter core --filter react run build:types",

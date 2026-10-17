@@ -1,0 +1,46 @@
+# Defaults for `pnpm bench`. Precedence: CLI flag > this file > built-in default.
+# Comment a key out (or delete it) to fall back to the built-in default.
+# Use `--config <path>` to run with a different file.
+
+# Smoke-test mode: 10 iterations per scenario, no verification. Timings from quick mode are
+# meaningless, so keep this false for any run you intend to compare.
+# CLI: --quick / --no-quick
+quick = false
+
+# Samples taken per framework x scenario cell. The median is the headline number and min/max show
+# the spread, so more samples give a more trustworthy median at the cost of run time.
+# Ignored by `--record`, which always takes 1 sample unless --repeats is passed.
+# CLI: --repeats <n>
+repeats = 10
+
+# Engines to benchmark, by id (see `pnpm bench --list`). `tc39` is commented out, so a plain
+# `pnpm bench` is not a full run and does not refresh results/latest.json and results/latest.md;
+# uncomment it for a full run (only full runs with no failed cells refresh those files).
+# When you add a framework in src/TestConfigs.ts, add its id here too, or it will be skipped.
+# CLI: --framework signalis,vue
+framework = [
+  "signalis",
+  "solid",
+  "preact",
+  "vue",
+  "alien",
+  #"tc39"
+]
+
+# Scenarios to run, by name (see `pnpm bench --list`). Same rule as `framework`: list every
+# scenario for a full run, and add new ones here.
+# CLI: --scenario "deep,wide dense"
+scenario = [
+  "simple component",
+  "dynamic component",
+  "large web app",
+  "wide dense",
+  "deep",
+  "very dynamic",
+]
+
+# Write results to <output>.json and <output>.md (relative to the current directory) instead of
+# the timestamped archive in results/. Leave unset to use results/ and refresh latest.* on full
+# runs.
+# CLI: --output <prefix>
+# output = "results/my-run"
