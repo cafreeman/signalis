@@ -1,9 +1,3 @@
-import { alienFramework } from './frameworks/AlienSignalsFramework.js';
-import { preactSignalFramework } from './frameworks/PreactSignalFramework.js';
-import { signalisFramework } from './frameworks/SignalisFramework.js';
-import { solidFramework } from './frameworks/SolidSignalsFramework.js';
-import { tc39Framework } from './frameworks/Tc39PolyfillFramework.js';
-import { vueFramework } from './frameworks/VueReactivityFramework.js';
 import type { ReactiveFramework } from './ReactiveFramework.js';
 
 /** Parameters for running a performance benchmark scenario.
@@ -57,8 +51,12 @@ export interface FrameworkInfo {
   /** npm package implementing the engine, recorded in result files */
   package: string;
 
-  /** wrapper/adapter for benchmarking a reactive framework */
-  framework: ReactiveFramework;
+  /** display name of the framework */
+  name: string;
+
+  /** loads the adapter for this framework. Adapters statically import their engine, so this is
+   * dynamic: a worker must only ever load the engine it benchmarks. */
+  load: () => Promise<ReactiveFramework>;
 
   /** list of scenario names to always skip for this framework (e.g. for known bugs) */
   skipTests?: string[];
@@ -72,22 +70,47 @@ export const frameworkInfo: FrameworkInfo[] = [
   {
     id: 'signalis',
     package: '@signalis/core',
-    framework: signalisFramework,
+    name: 'Signalis',
+    load: async () => (await import('./frameworks/SignalisFramework.js')).signalisFramework,
     testPullCounts: true,
   },
   // solid eagerly refreshes memos during batch, including leaves that are never read, so its
   // computed counts don't match the lazy engines' on partial-read scenarios. That extra work is
   // real and is timed; its sums and effect counts are still verified.
-  { id: 'solid', package: '@solidjs/signals', framework: solidFramework },
+  {
+    id: 'solid',
+    package: '@solidjs/signals',
+    name: 'Solid 2.0',
+    load: async () => (await import('./frameworks/SolidSignalsFramework.js')).solidFramework,
+  },
   {
     id: 'preact',
     package: '@preact/signals-core',
-    framework: preactSignalFramework,
+    name: 'Preact Signals',
+    load: async () => (await import('./frameworks/PreactSignalFramework.js')).preactSignalFramework,
     testPullCounts: true,
   },
-  { id: 'vue', package: '@vue/reactivity', framework: vueFramework, testPullCounts: true },
-  { id: 'alien', package: 'alien-signals', framework: alienFramework, testPullCounts: true },
-  { id: 'tc39', package: 'signal-polyfill', framework: tc39Framework, testPullCounts: true },
+  {
+    id: 'vue',
+    package: '@vue/reactivity',
+    name: 'Vue Reactivity',
+    load: async () => (await import('./frameworks/VueReactivityFramework.js')).vueFramework,
+    testPullCounts: true,
+  },
+  {
+    id: 'alien',
+    package: 'alien-signals',
+    name: 'Alien Signals',
+    load: async () => (await import('./frameworks/AlienSignalsFramework.js')).alienFramework,
+    testPullCounts: true,
+  },
+  {
+    id: 'tc39',
+    package: 'signal-polyfill',
+    name: 'TC39 Signals',
+    load: async () => (await import('./frameworks/Tc39PolyfillFramework.js')).tc39Framework,
+    testPullCounts: true,
+  },
 ];
 
 export const perfTests: TestConfig[] = [

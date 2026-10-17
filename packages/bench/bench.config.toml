@@ -13,8 +13,9 @@ quick = false
 # CLI: --repeats <n>
 repeats = 10
 
-# Engines to benchmark, by id (see `pnpm bench --list`). All of them are listed so a plain
-# `pnpm bench` is a full run; only full runs refresh results/latest.json and results/latest.md.
+# Engines to benchmark, by id (see `pnpm bench --list`). `tc39` is commented out, so a plain
+# `pnpm bench` is not a full run and does not refresh results/latest.json and results/latest.md;
+# uncomment it for a full run (only full runs with no failed cells refresh those files).
 # When you add a framework in src/TestConfigs.ts, add its id here too, or it will be skipped.
 # CLI: --framework signalis,vue
 framework = [

@@ -58,8 +58,14 @@ function main(): void {
   // CLI flags override the config file, which overrides the built-in defaults
   const { config: benchConfig, path: configPath } = loadBenchConfig(values.config);
 
-  const quick = values.quick ?? benchConfig.quick ?? false;
   const record = values.record;
+  if (record && values.quick) {
+    throw new Error(
+      '--record cannot be combined with --quick: recorded values need full iterations',
+    );
+  }
+  // --record needs full iterations, so the config's quick only applies to timed runs
+  const quick = record ? false : (values.quick ?? benchConfig.quick ?? false);
   // --record needs one sample per cell, so the config's repeats only applies to timed runs
   const repeats = parseRepeats(
     values.repeats ?? (record ? undefined : benchConfig.repeats),
@@ -72,7 +78,7 @@ function main(): void {
   if (values.list) {
     console.log('frameworks:');
     for (const f of frameworkInfo) {
-      console.log(`  ${f.id.padEnd(10)} ${f.framework.name}`);
+      console.log(`  ${f.id.padEnd(10)} ${f.name}`);
     }
     console.log('scenarios:');
     for (const t of perfTests) {
@@ -113,7 +119,7 @@ function main(): void {
       if (!scenarios.includes(scenarioConfig.name)) continue;
 
       if (info.skipTests?.includes(scenarioConfig.name)) {
-        console.log(`${info.framework.name} skips '${scenarioConfig.name}'`);
+        console.log(`${info.name} skips '${scenarioConfig.name}'`);
         results.push(skipRecord(scenarioConfig, info, 'skipped for this framework'));
         continue;
       }
@@ -133,7 +139,7 @@ function main(): void {
       if (record && first) {
         recorded.push({
           id: info.id,
-          framework: info.framework.name,
+          framework: info.name,
           test: scenarioConfig.name,
           ...first.result,
           pullCounts: info.testPullCounts ?? false,
@@ -223,7 +229,7 @@ function filterByFlag(all: string[], flag: string | undefined): string[] {
 
 function skipRecord(config: TestConfig, info: FrameworkInfo, reason: string): ScenarioRecord {
   return {
-    framework: info.framework.name,
+    framework: info.name,
     id: info.id,
     scenario: config.name,
     status: 'skip',
@@ -242,7 +248,7 @@ function skipRecord(config: TestConfig, info: FrameworkInfo, reason: string): Sc
 
 function failRecord(config: TestConfig, info: FrameworkInfo, message: string): ScenarioRecord {
   return {
-    framework: info.framework.name,
+    framework: info.name,
     id: info.id,
     scenario: config.name,
     status: 'fail',

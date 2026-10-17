@@ -42,7 +42,7 @@ export function logPerfResult(
   const { summary } = outcome;
   const iterations = options.quick ? QUICK_ITERATIONS : config.iterations;
   const row: PerfRow = {
-    framework: info.framework.name,
+    framework: info.name,
     test: config.name,
     size: `${config.width}x${config.totalLayers}`,
     'read%': percent(config.readFraction),
@@ -67,7 +67,7 @@ export function logPerfResult(
 
 export function logPerfFailure(config: TestConfig, info: FrameworkInfo, message: string): void {
   const row: PerfRow = {
-    framework: info.framework.name,
+    framework: info.name,
     test: config.name,
     size: `${config.width}x${config.totalLayers}`,
     'read%': percent(config.readFraction),

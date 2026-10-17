@@ -43,8 +43,8 @@ The checked-in file lists every scenario and every framework except `tc39`, whic
 so a plain `pnpm bench` skips it. Because that isn't every registered framework, such a run doesn't
 refresh `results/latest.*`; uncomment `tc39` (or pass `--framework` with all six ids) for a run that
 does. When you add a framework or scenario, add it to the file too, or a plain `pnpm bench` will
-skip it. `--record` ignores the config's `repeats` and takes one
-sample per cell unless `--repeats` is passed. Omit a key (or comment it out) for "not set". For multi-value keys, `["signalis", "alien"]` and `"signalis,alien"`
+skip it. `--record` ignores the config's `repeats` and `quick` (it takes one
+sample per cell at full iterations unless `--repeats` is passed) and rejects `--quick`. Omit a key (or comment it out) for "not set". For multi-value keys, `["signalis", "alien"]` and `"signalis,alien"`
 are equivalent. `--list` and `--record` are one-shot CLI actions and are not configurable.
 `--config <path>` points at a different config file, which must exist; it is resolved relative
 to the current working directory.
@@ -61,7 +61,7 @@ Every run except `--record` and `--list` writes its results to disk in
   module each engine actually loaded (`entries`), so a dev build sneaking in is visible. The
   Markdown is a human-readable table of the same run.
 - `latest.json` and `latest.md`: refreshed only by a full run (all frameworks, all scenarios,
-  not quick), so tooling and run-over-run diffs always have a stable path. Filtered or quick
+  not quick, no failed cells), so tooling and run-over-run diffs always have a stable path. Filtered or quick
   runs never touch them.
 - With `--output <prefix>` (or a config `output`), only `<prefix>.json` and `<prefix>.md` are
   written, resolved relative to the current working directory.
@@ -87,8 +87,8 @@ devDependency.
 ## Methodology
 
 Each scenario builds a rectangular dependency graph: mutable signals in the first layer, computed
-nodes in the middle layers (each summing `nSources` nodes from the layer above; `staticFraction`
-of them read a dynamic subset of their sources instead), and effect-observed leaves in the last
+nodes in the middle layers (each summing `nSources` nodes from the layer above; the remaining
+`1 - staticFraction` of them read a dynamic subset of their sources instead), and effect-observed leaves in the last
 layer. Each iteration writes one source inside the framework's batch wrapper, then reads the
 `readFraction` of leaves that carry effect observers.
 

@@ -83,7 +83,7 @@ export function buildRunMeta(args: {
 
 /**
  * Write a run's results to disk. A timestamped JSON + Markdown archive is always written; a
- * full run (every framework, every scenario, not quick) also refreshes `latest.json` and
+ * full run (every framework, every scenario, not quick, no failed cells) also refreshes `latest.json` and
  * `latest.md` so tooling has a stable path. An explicit output prefix writes only
  * `<prefix>.json` and `<prefix>.md`.
  *
@@ -120,7 +120,7 @@ export function okRecord(
   outcome: BenchmarkOutcome,
 ): ScenarioRecord {
   return {
-    framework: info.framework.name,
+    framework: info.name,
     id: info.id,
     scenario: config.name,
     status: 'ok',
@@ -161,7 +161,8 @@ function isFullRun(run: BenchRun): boolean {
   return (
     !run.meta.quick &&
     run.meta.frameworks.length === frameworkInfo.length &&
-    run.meta.scenarios.length === perfTests.length
+    run.meta.scenarios.length === perfTests.length &&
+    run.results.every((r) => r.status !== 'fail')
   );
 }
 

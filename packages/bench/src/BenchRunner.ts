@@ -78,7 +78,7 @@ export async function benchmarkTest(
   info: FrameworkInfo,
   options: RunOptions,
 ): Promise<BenchmarkOutcome> {
-  const { framework } = info;
+  const framework = await info.load();
   const iterations = options.quick ? QUICK_ITERATIONS : config.iterations;
 
   let gcTotal = 0;
@@ -144,19 +144,19 @@ function verifySamples(
   for (const sample of samples) {
     if (sample.result.sum !== expected.sum) {
       throw new Error(
-        `sum check failed for ${info.framework.name} '${config.name}': ` +
+        `sum check failed for ${info.name} '${config.name}': ` +
           `result ${sample.result.sum} expected ${expected.sum}`,
       );
     }
     if (sample.result.effects !== expected.effects) {
       throw new Error(
-        `effect check failed for ${info.framework.name} '${config.name}': ` +
+        `effect check failed for ${info.name} '${config.name}': ` +
           `result ${sample.result.effects} expected ${expected.effects}`,
       );
     }
     if (info.testPullCounts && expected.count > 0 && sample.result.count !== expected.count) {
       throw new Error(
-        `count check failed for ${info.framework.name} '${config.name}': ` +
+        `count check failed for ${info.name} '${config.name}': ` +
           `result ${sample.result.count} expected ${expected.count}`,
       );
     }
