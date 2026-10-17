@@ -1,7 +1,41 @@
-import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
-import type { Signal } from './signal.js';
 import type { Context, ReactiveFunction, ReactiveValue } from './types.js';
+
+// How updates flow through the graph
+//
+// The graph has three kinds of node: signals (writable values), deriveds (lazy, cached
+// computations), and reactions (side effects, which `createEffect` builds on). A computation (a
+// derived or a reaction) records the sources it reads while it runs (see `markDependency` and
+// `reconcileSources`), and every source keeps the reverse list in `_observers`.
+//
+// Every computation has a status:
+// - CLEAN: its cached result reflects the current values of all of its sources.
+// - STALE: something upstream changed, so one of its sources *might* have a new value. It has to
+//   validate its sources before it can trust its cache.
+// - DIRTY: one of its direct sources definitely has a new value, so it must recompute.
+//
+// Status marks are pushed down the graph eagerly, and values are pulled up it lazily:
+// 1. Push: a signal write marks the signal's direct observers DIRTY. A derived that leaves CLEAN
+//    marks its own observers STALE, and so on down to the leaves. A derived passes the STALE mark
+//    on only when it first leaves CLEAN, so the mark crosses each edge at most once per update.
+// 2. Pull: a derived recomputes only when something reads it (`Derived#validate`). A STALE derived
+//    validates its sources in the order it read them, and stops at the first one that recomputes
+//    to a new value: `Derived#compute` marks its direct observers DIRTY when its result changes.
+//    If every source turns out unchanged, the derived returns to CLEAN without recomputing.
+// 3. Reactions are the leaves of the graph. Marking a reaction schedules it (`scheduleReaction`),
+//    and `runReactions` validates the scheduled reactions once the write that marked them has
+//    finished propagating, which is what pulls fresh values through the deriveds they read.
+//
+// Passing the STALE mark on only once relies on an invariant: while a derived isn't CLEAN, neither
+// are its observers, so they already know to revalidate. Linking a source normally upholds it,
+// because a computation links a source by reading it, and reading a derived validates it. Deferred
+// source collection, which links sources some time after reading them, checks for sources that
+// were invalidated in between (see `hasInvalidatedSource`).
+//
+// Inside `batch`, the marks a write would push are buffered instead (see `markUpdates`), and
+// delivered when the outermost batch ends, followed by the scheduled reactions, so observers run
+// once per batch rather than once per write. Reading a derived mid-batch delivers its direct
+// sources' buffered marks early, so the read reflects the batch's writes so far.
 
 // State
 export const CLEAN = 0 as const;
@@ -14,11 +48,20 @@ export type STATUS = CLEAN | STALE | DIRTY;
 export type NOTCLEAN = Exclude<STATUS, CLEAN>;
 
 class State {
+  // The sources read by the running computation that differ from its previous run, and the index
+  // where they start to differ (see `markDependency`)
   currentContext: Context | null = null;
   currentContextIndex = 0;
+  // The computation whose reads are being tracked, if any
   runningComputation: ReactiveFunction | null = null;
+  // Reactions waiting to be validated. A reaction's `_isScheduled` flag records whether it's in
+  // here, so each one is queued at most once
   scheduledReactions: Array<Reaction> = [];
-  pendingUpdates = new Map<Signal<unknown> | Derived<unknown> | Reaction, () => void>();
+  // Sources whose observers are owed a mark from a write inside the current batch, in the order
+  // they were first written. The mark itself is stored on the source, as `_pendingStatus`, which is
+  // CLEAN when nothing is owed
+  pendingUpdates: Array<ReactiveValue> = [];
+  // How many `batch` calls are currently open; marks are buffered while this is nonzero
   batchCount = 0;
   // Tracking suspension is implemented as a counter rather than a boolean so
   // that `untrack` calls nest correctly: an inner `untrack` ending must not
@@ -124,58 +167,70 @@ function runUpdatesForObserver(observers: Array<ReactiveFunction>, status: NOTCL
   }
 }
 
-// Update the status on all observers of a given source. If we're currently in the middle of a batch,
-// the status update will instead be deferred until the batch is done.
+// Mark every observer of a source with `status`; a source calls this with DIRTY when its value
+// changes. Inside a batch, the mark is buffered on the source as its `_pendingStatus` instead, and
+// the source is queued once in `pendingUpdates`; repeated writes to the same source within the batch
+// just overwrite the buffered mark. The buffered marks are delivered when the batch ends, or earlier
+// if a dependent derived is read mid-batch (see `runPendingUpdate`).
 export function markUpdates(source: ReactiveValue, status: NOTCLEAN): void {
   if (source._observers) {
     if (batchCount() !== 0) {
-      STATE.pendingUpdates.set(source, () => runUpdatesForObserver(source._observers!, status));
+      if (source._pendingStatus === CLEAN) {
+        STATE.pendingUpdates.push(source);
+      }
+      source._pendingStatus = status;
     } else {
       runUpdatesForObserver(source._observers, status);
     }
   }
 }
 
+// Queue a reaction to be validated by the next `runReactions`. A reaction already in the queue stays
+// where it is, so it's validated once no matter how many of its sources were marked.
 export function scheduleReaction(reaction: Reaction): void {
-  if (STATE.scheduledReactions.includes(reaction)) {
-    return;
-  } else {
+  if (!reaction._isScheduled) {
+    reaction._isScheduled = true;
     STATE.scheduledReactions.push(reaction);
   }
 }
 
+// Validate scheduled reactions until none are left, including any that are scheduled by the
+// reactions themselves as they run. Each reaction leaves the queue before it's validated, so it can
+// be scheduled again by writes it makes.
 export function runReactions(): void {
   while (STATE.scheduledReactions.length > 0) {
-    const reaction = STATE.scheduledReactions.pop();
-    reaction?.validate();
+    const reaction = STATE.scheduledReactions.pop()!;
+    reaction._isScheduled = false;
+    reaction.validate();
   }
 }
 
+// Deliver every mark buffered by the batch that just ended. Delivering a mark can queue more
+// sources, which are appended to the list and delivered in the same pass.
 function runPendingUpdates(): void {
-  for (const update of STATE.pendingUpdates.values()) {
-    update();
+  const pending = STATE.pendingUpdates;
+
+  for (let i = 0; i < pending.length; i++) {
+    runPendingUpdate(pending[i]);
   }
 
-  STATE.pendingUpdates.clear();
+  pending.length = 0;
 }
 
-export function checkPendingUpdate(
-  v: Signal<unknown> | Derived<unknown> | Reaction | undefined,
-): (() => void) | undefined {
-  if (!v) {
-    return;
+// Deliver a source's buffered batch mark to its observers, if it has one, and report whether it did.
+// Delivering the mark resets the source's `_pendingStatus` to CLEAN, so a mark delivered early (when
+// a dependent derived is read mid-batch) isn't delivered again when the batch ends. The source can
+// stay in `pendingUpdates` after an early delivery: the end-of-batch pass skips CLEAN sources.
+export function runPendingUpdate(v: ReactiveValue | undefined): boolean {
+  if (!v || v._pendingStatus === CLEAN) {
+    return false;
   }
 
-  const update = STATE.pendingUpdates.get(v);
+  const status = v._pendingStatus;
+  v._pendingStatus = CLEAN;
+  runUpdatesForObserver(v._observers!, status);
 
-  // If we find an update, we remove it from the queue since we're going to pass it back out to the
-  // caller so it can be called eagerly and we want to avoid re-running it when we flush the
-  // remaining pending updates
-  if (update) {
-    STATE.pendingUpdates.delete(v);
-  }
-
-  return update;
+  return true;
 }
 
 export function suspendTracking() {

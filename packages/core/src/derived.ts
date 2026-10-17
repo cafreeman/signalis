@@ -1,6 +1,5 @@
 import {
   batchCount,
-  checkPendingUpdate,
   CLEAN,
   DIRTY,
   getContextIndex,
@@ -9,6 +8,7 @@ import {
   markDependency,
   markUpdates,
   type NOTCLEAN,
+  runPendingUpdate,
   setContextIndex,
   setCurrentContext,
   setRunningComputation,
@@ -21,6 +21,11 @@ import { assert, hasInvalidatedSource, reconcileSources, unlinkObservers } from 
 const DerivedTag = Symbol('Derived');
 
 // Derived
+//
+// A lazy, cached computation. It computes nothing until its `value` is read, and after that it
+// recomputes only when it's read while not CLEAN (see "How updates flow through the graph" in
+// `state.ts`). It starts out DIRTY with no sources, so the first read runs the computation and
+// subscribes the derived to whatever it reads.
 export class Derived<T> {
   readonly type = DerivedTag;
 
@@ -48,6 +53,14 @@ export class Derived<T> {
    */
   _observers: Array<ReactiveFunction> | null = null;
 
+  /**
+   * The mark owed to this derived's observers by a change inside the current batch, or CLEAN if
+   * none (see `markUpdates`).
+   *
+   * @internal
+   */
+  _pendingStatus: STATUS = CLEAN;
+
   constructor(fn: () => T, label?: string) {
     this._computeFn = fn;
     this._label = label ?? '';
@@ -65,8 +78,9 @@ export class Derived<T> {
       const { _sources: sources } = this;
       if (this._status === STALE) {
         // if we're stale, we know that we *might* need to recompute, so we call `validate` on
-        // each source until we find one that is dirty. If we end up validating a source as dirty,
-        // it'll mark us as dirty as well, so we immediately break and proceed to recomputing.
+        // each source, in the order we read them. A derived source that recomputes to a new value
+        // marks us DIRTY, at which point we stop validating and recompute. (Signal sources have
+        // nothing to validate: a signal write marks its observers DIRTY directly.)
         for (let i = 0; i < sources.length; i++) {
           const source = sources[i];
           assert(source !== undefined, 'source is undefined');
@@ -79,18 +93,14 @@ export class Derived<T> {
         }
       } else if (batchCount() !== 0) {
         // if we're being pulled on inside of a batch, it's possible that we'll need to recompute
-        // even though we might not be marked as stale or dirty yet since the updates will still be
-        // buffered inside of the batch transaction. To handle this scenario, we check the pending
-        // update map to see if there is already a pending update for one of our sources, and if we
-        // find it, we go ahead and run it, which will in turn mark us as dirty if we do, in fact,
-        // need to recompute. We don't run a risk of leaking further reactions outside of the
-        // transaction here because `markUpdate` will still buffer subsequent updates as long we're
-        // still in a batch.
+        // even though we might not be marked as stale or dirty yet since the marks are still
+        // buffered inside of the batch transaction. To handle this scenario, we check whether one
+        // of our sources has a buffered mark, and if we find one, we deliver it now
+        // (`runPendingUpdate`), which marks us dirty so that we recompute. We don't run a risk of
+        // leaking further reactions outside of the transaction here because `markUpdates` keeps
+        // buffering the marks of any further changes for as long as we're still in a batch.
         for (let i = 0; i < sources.length; i++) {
-          const update = checkPendingUpdate(sources[i]);
-
-          if (update) {
-            update();
+          if (runPendingUpdate(sources[i])) {
             break;
           }
         }
@@ -136,9 +146,16 @@ export class Derived<T> {
   markUpdate(status: NOTCLEAN) {
     // CLEAN < STALE < DIRTY
     if (this._status < status) {
+      const wasClean = this._status === CLEAN;
       this._status = status;
 
-      if (this._observers) {
+      // We mark our observers STALE only when we first leave CLEAN. Going from STALE to DIRTY has
+      // nothing new to tell them, because they're already STALE and will validate us before they
+      // trust their own caches; and if we recompute to a new value, `compute` marks them DIRTY.
+      // This keeps each update to a single walk over the downstream edges, which matters most on
+      // deep or wide graphs. It relies on the observers of a non-CLEAN derived being non-CLEAN too
+      // (see `state.ts`), which `_commitSourceCollection` restores for deferred source collection.
+      if (wasClean && this._observers) {
         for (let i = 0; i < this._observers.length; i++) {
           this._observers[i]?.markUpdate(STALE);
         }
@@ -167,9 +184,9 @@ export class Derived<T> {
       reconcileSources(this, this._pendingContext, this._pendingContextIndex);
       this._hasPendingSources = false;
 
-      // A source we just linked may have been invalidated since we read it, and we weren't an
-      // observer yet, so it couldn't mark us. Marking ourselves STALE makes the next read revalidate instead of serving our cached
-      // value, and tells our own observers
+      // A source we just linked may have been invalidated since we read it, and it won't tell us,
+      // because it already left CLEAN before we were its observer. Marking ourselves STALE makes
+      // the next read revalidate instead of serving our cached value, and tells our own observers
       if (hasInvalidatedSource(this, this._pendingContextIndex)) {
         this.markUpdate(STALE);
       }

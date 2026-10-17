@@ -17,6 +17,13 @@ import { hasInvalidatedSource, reconcileSources, unlinkObservers } from './utils
 
 const ReactionTag = Symbol('Reaction');
 
+// Reaction
+//
+// A side effect at the leaves of the graph. Its sources are whatever is read inside `trap` (or,
+// for `createEffect`, inside the effect callback, which runs in a `trap`). When a source changes,
+// the reaction is marked and scheduled, and `runReactions` validates it: if a source really did
+// change, `compute` runs the reaction's function (see "How updates flow through the graph" in
+// `state.ts`).
 export class Reaction {
   readonly type = ReactionTag;
   private _initialized = false;
@@ -39,6 +46,14 @@ export class Reaction {
   status: STATUS = CLEAN;
 
   isDisposed = false;
+
+  /**
+   * Whether this reaction is waiting in the queue that `runReactions` drains (see
+   * `scheduleReaction`).
+   *
+   * @internal
+   */
+  _isScheduled = false;
 
   constructor(fn: () => void | (() => void), cleanup?: () => void) {
     this._fn = fn;
@@ -142,7 +157,9 @@ export class Reaction {
    * @internal
    */
   markUpdate(status: NOTCLEAN) {
-    // CLEAN < STALE < DIRTY
+    // CLEAN < STALE < DIRTY. Reactions have no observers, so marking one just raises its status and
+    // queues it for `runReactions`, which validates it: a STALE reaction checks its sources and
+    // runs only if one of them actually changed, and a DIRTY one runs unconditionally.
     if (this.status < status) {
       scheduleReaction(this);
 
@@ -172,9 +189,9 @@ export class Reaction {
       reconcileSources(this, this._pendingContext, this._pendingContextIndex);
       this._hasPendingSources = false;
 
-      // A source we just linked may have been invalidated since we read it, and we weren't an
-      // observer yet, so it couldn't mark us. Marking ourselves STALE queues us to check our sources and run if one of them
-      // changed
+      // A source we just linked may have been invalidated since we read it, and it won't tell us,
+      // because it already left CLEAN before we were its observer. Marking ourselves STALE queues
+      // us to check our sources and run if one of them changed
       if (hasInvalidatedSource(this, this._pendingContextIndex)) {
         this.markUpdate(STALE);
       }
