@@ -5,7 +5,7 @@ Canonical guidance for AI agents (and human contributors) working in this reposi
 ## Hard rules
 
 - **Don't commit unless explicitly asked.** Leave the working tree for review.
-- **Never run `pnpm release`, `pnpm publish`, or push tags/branches.** Releases publish to npm and are human-triggered only. `pnpm release:dry` is safe to preview (verified on release-it 21: hooks are displayed but not executed in dry-run).
+- **Never run `pnpm release` or `pnpm publish`, and never push tags.** Releases publish to npm and are human-triggered only. Pushing feature branches and opening PRs is fine. `pnpm release:dry` is safe to preview (verified on release-it 21: hooks are displayed but not executed in dry-run).
 - **Never hand-edit `packages/*/CHANGELOG.md`.** Changelogs are generated from changeset files at release time.
 - **Every change that affects a published package needs a changeset** (see below).
 
