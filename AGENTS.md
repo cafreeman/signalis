@@ -13,6 +13,7 @@ Canonical guidance for AI agents (and human contributors) working in this reposi
 
 - `packages/core` → `@signalis/core`: the reactivity engine (signals, derived, effects, reactions, resources, stores).
 - `packages/react` → `@signalis/react`: React bindings; **re-exports all of `@signalis/core`**, so core's public API surface is also react's.
+- `packages/bench` → `@signalis/bench`: private cross-framework benchmark harness (never published; ignored by changesets). See its README.
 - `docs/`: VitePress site (deployed via GitHub Pages).
 
 Toolchain: pnpm (pinned via `packageManager` in the root package.json and `mise.toml`), Node (pinned via `mise.toml`, engines requires >= 22.12). Local secrets belong in `mise.local.toml` (gitignored), never in `mise.toml`.
@@ -28,6 +29,7 @@ pnpm lint:fix       # oxlint with auto-fix
 pnpm test           # vitest, all packages
 pnpm build          # vite build + type declarations, all packages
 pnpm clean          # remove dist directories
+pnpm bench          # cross-framework benchmarks (see packages/bench/README.md)
 pnpm docs:dev       # VitePress docs dev server
 ```
 
@@ -83,8 +85,8 @@ type(scope): subject
 - optional detail bullets
 ```
 
-Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
-Scopes: `core`, `react`, `root` (config/tooling).
+Types: `feat`, `fix`, `perf`, `docs`, `refactor`, `test`, `chore`. Use `perf` for performance work with no API change (it still needs a changeset when it touches a published package); keep `refactor` for changes with no user-facing effect.
+Scopes: `core`, `react`, `bench` (the private benchmark package), `root` (config/tooling).
 Example: `fix(core): flush pending updates when a batch callback throws`.
 
 ## How a release works (reference — humans trigger this)
