@@ -20,6 +20,16 @@ import { assert, hasInvalidatedSource, reconcileSources, unlinkObservers } from 
 
 const DerivedTag = Symbol('Derived');
 
+// The explicit stack that `Derived._markObserversStale` walks the graph with: for each level of the
+// walk below the starting node, the observer array being walked and the index of the next observer
+// to visit in it. The arrays are shared by every walk and grow only to the deepest graph marked so
+// far. A walk starts at depth 0 and overwrites whatever an earlier walk left in the slots, so none
+// of them needs resetting; the observer slots are cleared as frames are popped so the stack doesn't
+// keep nodes alive. Sharing them is safe because a walk can't re-enter itself: marking only changes
+// statuses and schedules reactions (`Reaction#markUpdate`), and runs no user code.
+const stackObservers: Array<Array<ReactiveFunction> | undefined> = [];
+const stackIndices: Array<number> = [];
+
 // Derived
 //
 // A lazy, cached computation. It computes nothing until its `value` is read, and after that it
@@ -69,7 +79,12 @@ export class Derived<T> {
 
   get value(): T {
     markDependency(this);
-    this.validate();
+    // `validate` does nothing for a CLEAN derived outside a batch, so the common read skips the
+    // call. The condition is small enough for V8 to inline into the caller, which `validate` isn't.
+    // Inside a batch a CLEAN derived can still owe a recompute (see the batch branch in `validate`)
+    if (this._status !== CLEAN || batchCount() !== 0) {
+      this.validate();
+    }
     return this._lastValue as T;
   }
 
@@ -162,9 +177,57 @@ export class Derived<T> {
       // deep or wide graphs. It relies on the observers of a non-CLEAN derived being non-CLEAN too
       // (see `state.ts`), which `_commitSourceCollection` restores for deferred source collection.
       if (wasClean && this._observers) {
-        for (let i = 0; i < this._observers.length; i++) {
-          this._observers[i]?.markUpdate(STALE);
+        Derived._markObserversStale(this._observers);
+      }
+    }
+  }
+
+  // Mark everything downstream of a derived that just left CLEAN as STALE, walking the graph with
+  // a loop over `stackObservers`/`stackIndices` instead of recursing through `markUpdate`.
+  //
+  // The visit order matters. Reactions are scheduled as the walk reaches them, and `runReactions`
+  // drains that queue last-in-first-out, so the order here sets the order effects run in. The walk
+  // is depth first and pre-order: a derived observer is marked and its own observers are walked
+  // before the walk moves on to its next sibling. Walking all siblings first would schedule the
+  // same reactions in a different order.
+  //
+  // Derived and reaction observers are handled differently. A derived observer that isn't CLEAN is
+  // skipped, because it has already told its own observers (see `markUpdate`). Anything else is a
+  // reaction, which has no observers: `markUpdate` just raises its status and schedules it.
+  // Observer arrays only grow by `push` and shrink by swap-and-pop, so they have no holes to guard
+  // against.
+  private static _markObserversStale(root: Array<ReactiveFunction>): void {
+    let depth = 0;
+    let observers = root;
+    let index = 0;
+
+    while (true) {
+      if (index < observers.length) {
+        const observer = observers[index++]!;
+
+        if (observer instanceof Derived) {
+          if (observer._status === CLEAN) {
+            observer._status = STALE;
+
+            const downstream = observer._observers;
+            if (downstream !== null && downstream.length > 0) {
+              stackObservers[depth] = observers;
+              stackIndices[depth] = index;
+              depth++;
+              observers = downstream;
+              index = 0;
+            }
+          }
+        } else {
+          observer.markUpdate(STALE);
         }
+      } else if (depth > 0) {
+        depth--;
+        observers = stackObservers[depth]!;
+        index = stackIndices[depth]!;
+        stackObservers[depth] = undefined;
+      } else {
+        return;
       }
     }
   }

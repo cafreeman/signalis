@@ -262,4 +262,69 @@ describe('batch', () => {
     expect(barSpy).toHaveBeenCalledTimes(2);
     expect(fooBarSpy).toHaveBeenCalledTimes(2);
   });
+
+  test('a large batch followed by a small one delivers every write exactly once', () => {
+    const signals = Array.from({ length: 1000 }, (_, i) => createSignal(i));
+    const spies = signals.map((signal) =>
+      vi.fn(() => {
+        signal.value;
+      }),
+    );
+    spies.forEach((spy) => createEffect(spy));
+
+    batch(() => {
+      signals.forEach((signal) => signal.value++);
+    });
+
+    spies.forEach((spy) => expect(spy).toHaveBeenCalledTimes(2));
+
+    batch(() => {
+      signals[3]!.value++;
+      signals[500]!.value++;
+    });
+
+    spies.forEach((spy, i) => expect(spy).toHaveBeenCalledTimes(i === 3 || i === 500 ? 3 : 2));
+  });
+
+  test('a mark delivered early by a mid-batch read is not delivered again when the batch ends', () => {
+    const count = createSignal(1);
+    const derivedSpy = vi.fn(() => count.value * 2);
+    const double = createDerived(derivedSpy);
+    const effectSpy = vi.fn(() => {
+      double.value;
+    });
+
+    createEffect(effectSpy);
+
+    batch(() => {
+      count.value = 2;
+      expect(double.value).toEqual(4);
+    });
+
+    expect(derivedSpy).toHaveBeenCalledTimes(2);
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test('a source written again after a mid-batch read delivers its final mark exactly once', () => {
+    const count = createSignal(1);
+    const derivedSpy = vi.fn(() => count.value * 2);
+    const double = createDerived(derivedSpy);
+    const seen: Array<number> = [];
+    const effectSpy = vi.fn(() => {
+      seen.push(double.value);
+    });
+
+    createEffect(effectSpy);
+
+    batch(() => {
+      count.value = 2;
+      expect(double.value).toEqual(4);
+      count.value = 3;
+    });
+
+    expect(seen).toEqual([2, 6]);
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+    // initial run, the mid-batch read, and the recompute the effect triggers after the batch
+    expect(derivedSpy).toHaveBeenCalledTimes(3);
+  });
 });

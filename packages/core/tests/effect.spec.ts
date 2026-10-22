@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { batch } from '../src/batch';
 import { createDerived } from '../src/derived';
 import { createEffect } from '../src/effect';
 import { createSignal } from '../src/signal';
@@ -219,5 +220,98 @@ describe('Effect', () => {
     // expect(effectWrapper).toThrowError(
     //   'cannot update a signal that is being used during a computation.'
     // );
+  });
+
+  // Effects run in the order that STALE marking schedules their reactions, so changes to how marks
+  // propagate through the graph must leave this order alone
+  test('effects and derived computations run in a stable order through a branching graph', () => {
+    const log: Array<string> = [];
+    const s = createSignal(0);
+    const t = createSignal(0);
+
+    const a = createDerived(() => (log.push('a'), s.value + 1));
+    const b = createDerived(() => (log.push('b'), s.value * 2));
+    const c = createDerived(() => (log.push('c'), a.value + 1));
+    // `d` is a diamond: it is reachable from `s` through both `a` and `b`
+    const d = createDerived(() => (log.push('d'), a.value + b.value + t.value));
+    const e = createDerived(() => (log.push('e'), c.value + d.value));
+    // No effect reads `u`, so outside a batch it is still STALE when the next write arrives
+    const u = createDerived(() => (log.push('u'), a.value + d.value));
+
+    createEffect(() => {
+      log.push(`fx1:${c.value}`);
+    });
+    createEffect(() => {
+      log.push(`fx2:${d.value}`);
+    });
+    createEffect(() => {
+      log.push(`fx3:${b.value}:${e.value}`);
+    });
+    createEffect(() => {
+      log.push(`fx4:${s.value}`);
+    });
+    u.value;
+
+    log.length = 0;
+
+    s.value = 1;
+    s.value = 2;
+    t.value = 1;
+    batch(() => {
+      s.value = 3;
+      t.value = 2;
+      s.value = 4;
+    });
+    batch(() => {
+      t.value = 3;
+    });
+    s.value = 5;
+
+    expect(log).toEqual([
+      'fx4:1',
+      'a',
+      'd',
+      'b',
+      'fx2:4',
+      'e',
+      'c',
+      'fx3:2:7',
+      'fx1:3',
+      'fx4:2',
+      'a',
+      'd',
+      'b',
+      'fx2:7',
+      'e',
+      'c',
+      'fx3:4:11',
+      'fx1:4',
+      'd',
+      'e',
+      'fx3:4:12',
+      'fx2:8',
+      'fx4:4',
+      'd',
+      'a',
+      'b',
+      'fx2:15',
+      'e',
+      'c',
+      'fx3:8:21',
+      'fx1:6',
+      'd',
+      'e',
+      'fx3:8:22',
+      'fx2:16',
+      'fx4:5',
+      'a',
+      'd',
+      'b',
+      'fx2:19',
+      'e',
+      'c',
+      'fx3:10:26',
+      'fx1:7',
+    ]);
   });
 });

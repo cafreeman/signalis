@@ -17,7 +17,9 @@ import type { Context, ReactiveFunction, ReactiveValue } from './types.js';
 // Status marks are pushed down the graph eagerly, and values are pulled up it lazily:
 // 1. Push: a signal write marks the signal's direct observers DIRTY. A derived that leaves CLEAN
 //    marks its own observers STALE, and so on down to the leaves. A derived passes the STALE mark
-//    on only when it first leaves CLEAN, so the mark crosses each edge at most once per update.
+//    on only when it first leaves CLEAN, so the mark crosses each edge at most once per update. The
+//    walk is a loop over an explicit stack, not recursion, and visits nodes depth first so that
+//    reactions are scheduled in a fixed order (see `Derived._markObserversStale`).
 // 2. Pull: a derived recomputes only when something reads it (`Derived#validate`). A STALE derived
 //    validates its sources in the order it read them, and stops at the first one that recomputes
 //    to a new value: `Derived#compute` marks its direct observers DIRTY when its result changes.
