@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { batch } from '../src/batch';
 import { createDerived } from '../src/derived';
 import { Reaction } from '../src/reaction';
 import { createSignal } from '../src/signal';
@@ -328,9 +329,66 @@ describe('reaction', () => {
     upstream.value = 2;
     reaction._commitSourceCollection();
 
-    // `total` now goes from STALE to DIRTY, which it doesn't announce to its observers; the
-    // reaction must still find out that it changed
+    expect(fnSpy).toHaveBeenCalledOnce();
+
+    // The commit left `total` CLEAN and the reaction linked to it, so later writes reach it too
     other.value = 2;
+
+    expect(fnSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test('runs on a deferred commit that links it to a derived that changed since it was read', () => {
+    const upstream = createSignal(1);
+    const doubled = createDerived(() => upstream.value * 2);
+    const fnSpy = vi.fn();
+    const reaction = new Reaction(fnSpy);
+
+    reaction._beginSourceCollection();
+    reaction.trap(() => {
+      doubled.value;
+    });
+
+    // Written between "render" and "commit"; no later write comes along to flush the reaction
+    upstream.value = 2;
+    reaction._commitSourceCollection();
+
+    expect(fnSpy).toHaveBeenCalledOnce();
+  });
+
+  test('does not run on a deferred commit when the invalidated derived recomputes to the same value', () => {
+    const upstream = createSignal(1);
+    const isOdd = createDerived(() => upstream.value % 2 === 1);
+    const fnSpy = vi.fn();
+    const reaction = new Reaction(fnSpy);
+
+    reaction._beginSourceCollection();
+    reaction.trap(() => {
+      isOdd.value;
+    });
+
+    upstream.value = 3;
+    reaction._commitSourceCollection();
+
+    expect(fnSpy).not.toHaveBeenCalled();
+  });
+
+  test('a deferred commit inside a batch runs the reaction when the batch ends', () => {
+    const upstream = createSignal(1);
+    const doubled = createDerived(() => upstream.value * 2);
+    const fnSpy = vi.fn();
+    const reaction = new Reaction(fnSpy);
+
+    reaction._beginSourceCollection();
+    reaction.trap(() => {
+      doubled.value;
+    });
+
+    upstream.value = 2;
+
+    batch(() => {
+      reaction._commitSourceCollection();
+      expect(fnSpy).not.toHaveBeenCalled();
+    });
 
     expect(fnSpy).toHaveBeenCalledOnce();
   });
