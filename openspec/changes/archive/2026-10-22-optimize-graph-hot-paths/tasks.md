@@ -7,7 +7,7 @@
 
 ## 2. Pending queue (measured and dropped)
 
-- [x] 2.1 Implement the fixed array plus `pendingCount` in `packages/core/src/state.ts` and measure it. Alone it regressed large web app (+6%) and wide dense (+5%) outside run-to-run drift, and combined with the other fixes it left the total unchanged, so it was reverted (see design.md, decision 1).
+- [x] 2.1 Measured and dropped: implement the fixed array plus `pendingCount` in `packages/core/src/state.ts` and measure it. Alone it regressed large web app (+6%) and wide dense (+5%) outside run-to-run drift, and combined with the other fixes it left the total unchanged, so it was reverted (see design.md, decision 1).
 - [x] 2.2 Keep the batch tests added for it in `packages/core/tests/batch.spec.ts`, which guard existing behavior and pass on both versions:
   - A large batch, then a later small batch, each deliver every write exactly once.
   - A source whose mark was delivered early by a mid-batch read isn't delivered again at the end of the batch.
