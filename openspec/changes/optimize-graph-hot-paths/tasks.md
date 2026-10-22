@@ -5,17 +5,13 @@
 - [x] 1.1 Add an ordering regression test to `packages/core/tests/effect.spec.ts`. Build a branching graph: one signal feeding several deriveds, siblings at multiple depths, a diamond (a node reachable by two paths), at least three effects under shared deriveds, and a derived that no effect reads (outside a batch it is still STALE when the next write arrives, which exercises the skip-non-CLEAN branch). Record the order in which effects run and nodes recompute over several writes, both batched and unbatched, and capture the expected order from the current implementation. Verify that `pnpm test` passes before any source change.
 - [x] 1.2 Record a baseline with `pnpm bench` (full run, current config). Note the Signalis medians per scenario, and verify that the run reports every cell `ok`. Refresh the "Current (ms)" column in proposal.md from this run, since the figures there predate the #69 fixes.
 
-## 2. Pending queue keeps its storage
+## 2. Pending queue (measured and dropped)
 
-- [x] 2.1 In `packages/core/src/state.ts`, change `pendingUpdates` to a fixed array plus a `pendingCount`. `markUpdates` writes at the count. `runPendingUpdates` walks indices up to the live count, clears each slot to `undefined` before delivering it, then resets the count to 0. Verify that `pnpm test` passes, including the existing batch and mid-batch-read tests.
-- [x] 2.2 Add a test to `packages/core/tests/batch.spec.ts`:
+- [x] 2.1 Implement the fixed array plus `pendingCount` in `packages/core/src/state.ts` and measure it. Alone it regressed large web app (+6%) and wide dense (+5%) outside run-to-run drift, and combined with the other fixes it left the total unchanged, so it was reverted (see design.md, decision 1).
+- [x] 2.2 Keep the batch tests added for it in `packages/core/tests/batch.spec.ts`, which guard existing behavior and pass on both versions:
   - A large batch, then a later small batch, each deliver every write exactly once.
   - A source whose mark was delivered early by a mid-batch read isn't delivered again at the end of the batch.
   - A source written, read mid-batch (early delivery), then written again in the same batch delivers its final mark exactly once to its observers.
-
-  Verify with the spy-effect call counts.
-
-- [x] 2.3 Update the comments on `pendingUpdates`, `markUpdates` and `runPendingUpdates` so they describe the array-plus-count queue and why its storage stays allocated. Present tense only, no before/after wording. Verify by reading the diff.
 
 ## 3. Iterative STALE propagation
 
@@ -47,5 +43,5 @@
 ## 5. Integration
 
 - [x] 5.1 Run `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm -r exec tsc --noEmit` and `node_modules/.bin/prettier --check .`, and verify that all pass.
-- [ ] 5.2 Run `pnpm bench` (full run) and compare it to the 1.2 baseline. Verify that every cell reports `ok`. Keep each fix only if it improves at least one scenario outside its min/max spread and regresses none; revert any fix that doesn't, and say so in the write-up.
-- [x] 5.3 Add bullets for the batch queue, iterative propagation and the clean-read fast path (`@signalis/core`: patch). If `pnpm changeset status` still lists `.changeset/faster-update-propagation.md`, extend it; otherwise add a new changeset. Verify that `pnpm changeset status` lists the patch bump.
+- [x] 5.2 Run `pnpm bench` (full run) and compare it to the 1.2 baseline. Verify that every cell reports `ok`. Keep each fix only if it improves at least one scenario outside its min/max spread and regresses none; revert any fix that doesn't, and say so in the write-up.
+- [x] 5.3 Add bullets for iterative propagation and the clean-read fast path (`@signalis/core`: patch). If `pnpm changeset status` still lists `.changeset/faster-update-propagation.md`, extend it; otherwise add a new changeset. Verify that `pnpm changeset status` lists the patch bump.
