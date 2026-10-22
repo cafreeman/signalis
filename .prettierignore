@@ -2,4 +2,7 @@ dist
 pnpm-lock.yaml
 docs/api
 .cursor
-.claude/skills/openspec-*
+.claude
+openspec
+.github/workflows/claude*.yml
+packages/*/CHANGELOG.md
