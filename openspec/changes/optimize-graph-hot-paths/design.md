@@ -37,6 +37,9 @@ See proposal.md (Why) for the measurements. The relevant current code:
 - **Queueing:** `markUpdates` writes `pendingUpdates[pendingCount++] = source`.
 - **Flushing:** `runPendingUpdates` walks indices up to the live count, sets each slot to `undefined` before delivering it (so the queue doesn't keep sources alive), then resets the count to 0. The array's backing store stays allocated across batches.
 - **Order:** delivery order stays the order in which sources were first written.
+- **Type:** `Array<ReactiveValue | undefined>`, since consumed slots are cleared.
+- **Duplicates:** a source whose mark was delivered early (a mid-batch read) and is then written again in the same batch is queued a second time, because its `_pendingStatus` is CLEAN again. The end-of-batch pass delivers it at its first slot and skips the second, which then finds it CLEAN. This already happens today. Comment it where the queue is written.
+- **Throwing:** the flush has no `finally`, deliberately. It runs no user code, since marking only schedules, so it has nothing to throw. If it did throw partway, resetting the count would be worse than leaving it: sources in the unvisited slots still have a non-CLEAN `_pendingStatus`, so `markUpdates` would never queue them again and their observers would never be notified. Leaving the count alone lets the next flush deliver them, and the cleared slots are skipped.
 
 Alternatives considered:
 
@@ -53,6 +56,9 @@ When a derived first leaves CLEAN, `markUpdate` hands its observer array to a pr
 - **A reaction observer:** call `markUpdate(STALE)`, which schedules it.
 
 The stack frames live in two module-level arrays (observer arrays and indices). They're reused across calls and grow only to the graph's depth, so propagation allocates nothing. Slots are cleared as frames are popped. Reusing module-level stacks is safe because propagation can't re-enter (see Context).
+
+- **Depth is local:** each call keeps its own depth counter, starting at 0, and overwrites whatever stale slots a previous call left. Only the arrays are shared. So a call that was cut short can't leave the next one starting from a half-used stack.
+- **No holes in observer arrays:** observer arrays only grow by `push` (in `reconcileSources`) and only shrink by swap-and-pop (in `spliceWhenKnown`), and nothing else writes `_observers`, so they're never sparse. The loop drops the `?.` guards that the recursive version carries: anything that isn't `instanceof Derived` is a reaction.
 
 - **How the routine tells derived observers from reactions:** with `instanceof Derived`, a single monomorphic check. The alternative was a new polymorphic method on both classes.
 - **Where the routine lives:** as a `private static` method on `Derived`. TypeScript lets a class's static methods read and write the `private _status` of any instance, so `_status` stays private and the public declaration surface doesn't grow.
@@ -75,7 +81,8 @@ Alternative considered: restructuring `validate()` so that its CLEAN path return
 - **[Effect order silently changes]** → Before touching propagation, add a test that records the order in which effects run and nodes recompute for a branching graph (several reactions under shared deriveds, siblings at multiple depths), and capture the expected order from the current implementation. The test must pass unchanged afterwards. The bench's verified sums and counts give a second check.
 - **[Re-entrancy assumption breaks later]** (for example, if `Reaction#markUpdate` someday runs code synchronously) → Document the assumption where the shared stacks are declared. Keep `markUpdate` on reactions schedule-only.
 - **[Queue or stack slots retaining nodes]** → Clear each queue slot and stack slot as it's consumed, so a flushed batch or finished propagation holds no references.
-- **[Gains are V8- and machine-specific]** → Re-run the full `pnpm bench` after implementation and compare against the run recorded in proposal.md. Keep a fix only if it holds up there.
+- **[Storage never shrinks]** → The queue and the stacks keep their backing stores at the largest batch or graph depth seen. That's the point of the change, and the cost is bounded by that high-water mark, so it's accepted.
+- **[Gains are V8- and machine-specific]** → Re-run the full `pnpm bench` after implementation and compare it against the baseline re-recorded in task 1.2. Keep a fix only if it improves at least one scenario outside its min/max spread and regresses none.
 - **[`instanceof` across duplicate module copies]** → Not a concern: `@signalis/react` must not bundle core (already enforced), so there is one `Derived` class per graph.
 
 ## Migration Plan
