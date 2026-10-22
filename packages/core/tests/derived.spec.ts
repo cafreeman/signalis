@@ -379,4 +379,114 @@ describe('Derived', () => {
 
     expect(values).toEqual([30, 60, 70, 90]);
   });
+
+  test('marking propagates through a diamond and a deep chain to effects at every depth', () => {
+    const head = createSignal(0);
+    const chain = [createDerived(() => head.value + 1)];
+    // Reading each node as it's built keeps the first computes shallow
+    chain[0]!.value;
+    for (let i = 1; i < 300; i++) {
+      const previous = chain[i - 1]!;
+      const node = createDerived(() => previous.value + 1);
+      node.value;
+      chain.push(node);
+    }
+
+    const tail = chain[299]!;
+    const left = createDerived(() => tail.value * 2);
+    const right = createDerived(() => tail.value * 3);
+    const join = createDerived(() => left.value + right.value);
+
+    const seen = {
+      middle: [] as Array<number>,
+      tail: [] as Array<number>,
+      join: [] as Array<number>,
+    };
+    createEffect(() => {
+      seen.middle.push(chain[150]!.value);
+    });
+    createEffect(() => {
+      seen.tail.push(tail.value);
+    });
+    createEffect(() => {
+      seen.join.push(join.value);
+    });
+
+    head.value = 10;
+    head.value = 20;
+
+    expect(seen.middle).toEqual([151, 161, 171]);
+    expect(seen.tail).toEqual([300, 310, 320]);
+    expect(seen.join).toEqual([1500, 1550, 1600]);
+  });
+
+  test('writing a signal marks a chain deeper than the call stack without throwing', () => {
+    const head = createSignal(0);
+    let previous = createDerived(() => head.value);
+    previous.value;
+    for (let i = 1; i < 50_000; i++) {
+      const upstream = previous;
+      previous = createDerived(() => upstream.value + 1);
+      previous.value;
+    }
+
+    // Nothing reads the tail, so only the marking walks the chain; a read would recurse through it
+    expect(() => {
+      head.value = 1;
+    }).not.toThrow();
+  });
+
+  test('reading a clean derived repeatedly does not rerun its computation', () => {
+    const count = createSignal(1);
+    const computeSpy = vi.fn(() => count.value * 2);
+    const double = createDerived(computeSpy);
+
+    expect(double.value).toEqual(2);
+    expect(double.value).toEqual(2);
+    expect(double.value).toEqual(2);
+    expect(computeSpy).toHaveBeenCalledOnce();
+
+    count.value = 2;
+
+    expect(double.value).toEqual(4);
+    expect(double.value).toEqual(4);
+    expect(computeSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test('reading a derived inside a batch reflects a write made earlier in the batch', () => {
+    const count = createSignal(1);
+    const double = createDerived(() => count.value * 2);
+    const plusOne = createDerived(() => double.value + 1);
+
+    expect(plusOne.value).toEqual(3);
+
+    batch(() => {
+      count.value = 5;
+
+      expect(double.value).toEqual(10);
+      expect(plusOne.value).toEqual(11);
+    });
+
+    expect(plusOne.value).toEqual(11);
+  });
+
+  test('marking downstream nodes STALE never downgrades one that a write already marked DIRTY', () => {
+    const source = createSignal(0);
+    const useGate = createSignal(false);
+    const gate = createDerived(() => source.value > 100);
+    const dependent = createDerived(() => source.value + (useGate.value && gate.value ? 1 : 0));
+    const seen: Array<number> = [];
+
+    createEffect(() => {
+      seen.push(dependent.value);
+    });
+
+    // Reading `gate` for the first time links it to `source` after `dependent`, so a write to
+    // `source` marks `dependent` DIRTY first and then marks `gate` DIRTY, whose walk reaches
+    // `dependent` again
+    useGate.value = true;
+    source.value = 1;
+
+    expect(seen).toEqual([0, 1]);
+  });
 });
