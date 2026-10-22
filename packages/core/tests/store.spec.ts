@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { createDerived } from '../src/derived.js';
 import { createEffect } from '../src/effect.js';
 import { update } from '../src/update.js';
 import { createStore, unwrap, setProperty } from '../src/store.js';
@@ -426,5 +427,25 @@ describe('store', () => {
 
       expect(store.state).toEqual(arr2);
     });
+  });
+});
+
+describe('update and derived values', () => {
+  test('a derived two levels below a store property reflects an earlier write in the recipe', () => {
+    const store = createStore({ count: 1 });
+    const double = createDerived(() => store.count * 2);
+    const plusOne = createDerived(() => double.value + 1);
+    const seen: Array<number> = [];
+    createEffect(() => {
+      seen.push(plusOne.value);
+    });
+
+    update(store, (draft) => {
+      draft.count = 5;
+
+      expect(plusOne.value).toEqual(11);
+    });
+
+    expect(seen).toEqual([3, 11]);
   });
 });

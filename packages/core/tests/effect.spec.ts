@@ -222,9 +222,9 @@ describe('Effect', () => {
     // );
   });
 
-  // Effects run in the order that STALE marking schedules their reactions, so changes to how marks
-  // propagate through the graph must leave this order alone
-  test('effects and derived computations run in a stable order through a branching graph', () => {
+  // A branching graph that logs every recompute and effect run: `s` feeds `a` and `b`, `d` is a
+  // diamond over them, `e` joins `c` and `d`, and no effect reads `u`
+  function createBranchingGraph() {
     const log: Array<string> = [];
     const s = createSignal(0);
     const t = createSignal(0);
@@ -253,6 +253,13 @@ describe('Effect', () => {
     u.value;
 
     log.length = 0;
+    return { log, s, t, a, b, c, d, e, u };
+  }
+
+  // Effects run in the order that STALE marking schedules their reactions, so changes to how marks
+  // propagate through the graph must leave this order alone
+  test('effects and derived computations run in a stable order through a branching graph', () => {
+    const { log, s, t } = createBranchingGraph();
 
     s.value = 1;
     s.value = 2;
@@ -312,6 +319,85 @@ describe('Effect', () => {
       'c',
       'fx3:10:26',
       'fx1:7',
+    ]);
+  });
+
+  // Effects run only after the outermost batch ends, so every `fx` entry follows the `end of batch`
+  // marker of the batch that scheduled it. Reading a derived inside a batch recomputes it there
+  test('batches that read deriveds mid-batch run effects only after the batch ends', () => {
+    const { log, s, t, a, c, e } = createBranchingGraph();
+
+    batch(() => {
+      s.value = 1;
+      a.value;
+      t.value = 1;
+      log.push('end of batch');
+    });
+    log.push('--');
+    batch(() => {
+      s.value = 2;
+      e.value;
+      t.value = 2;
+      c.value;
+      log.push('end of batch');
+    });
+    log.push('--');
+    batch(() => {
+      t.value = 3;
+      s.value = 3;
+      e.value;
+      log.push('end of batch');
+    });
+
+    // The rule itself, apart from the exact list below
+    log
+      .join(',')
+      .split(',--,')
+      .forEach((batchLog) => {
+        const entries = batchLog.split(',');
+        const end = entries.indexOf('end of batch');
+        entries.forEach((entry, index) => {
+          if (entry.startsWith('fx')) {
+            expect(index, `${entry} in "${batchLog}"`).toBeGreaterThan(end);
+          }
+        });
+      });
+
+    expect(log).toEqual([
+      'a',
+      'end of batch',
+      'fx4:1',
+      'd',
+      'b',
+      'fx2:5',
+      'e',
+      'c',
+      'fx3:2:8',
+      'fx1:3',
+      '--',
+      'a',
+      'c',
+      'e',
+      'd',
+      'b',
+      'end of batch',
+      'fx4:2',
+      'd',
+      'fx2:9',
+      'e',
+      'fx3:4:13',
+      'fx1:4',
+      '--',
+      'a',
+      'c',
+      'e',
+      'd',
+      'b',
+      'end of batch',
+      'fx4:3',
+      'fx1:5',
+      'fx3:6:18',
+      'fx2:13',
     ]);
   });
 });
