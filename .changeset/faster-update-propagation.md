@@ -8,3 +8,4 @@ Speed up update propagation and fix stale reads after deferred source collection
 - Writes inside `batch` no longer allocate a closure and map entry per write
 - Scheduling a reaction no longer scans the queue of pending reactions
 - A derived or reaction whose deferred source collection (as used by `useDerived` and `reactor`) links it to a source that was invalidated after it was read now revalidates, instead of serving the value computed before that change
+- Reading a derived inside `batch` now picks up a change made earlier in the batch to a derived it depends on, instead of returning its previous value

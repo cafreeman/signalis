@@ -1,10 +1,12 @@
 import {
+  batchCount,
   CLEAN,
   DIRTY,
   getContextIndex,
   getCurrentContext,
   getRunningComputation,
   type NOTCLEAN,
+  runReactions,
   scheduleReaction,
   setContextIndex,
   setCurrentContext,
@@ -191,9 +193,14 @@ export class Reaction {
 
       // A source we just linked may have been invalidated since we read it, and it won't tell us,
       // because it already left CLEAN before we were its observer. Marking ourselves STALE queues
-      // us to check our sources and run if one of them changed
+      // us to check our sources and run if one of them changed. Nothing else is going to drain the
+      // queue until the next write, so we run it now, unless a batch will run it when it ends
       if (hasInvalidatedSource(this, this._pendingContextIndex)) {
         this.markUpdate(STALE);
+
+        if (batchCount() === 0) {
+          runReactions();
+        }
       }
     }
   }

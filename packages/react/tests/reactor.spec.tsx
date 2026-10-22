@@ -1,7 +1,7 @@
 import React, { Suspense, useLayoutEffect } from 'react';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { act, render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, test, expect, afterEach } from 'vitest';
-import { createSignal, reactor } from '../src/index.js';
+import { createDerived, createSignal, reactor } from '../src/index.js';
 
 // Test component for reactor
 function TestReactorComponent({ initialValue = 0 }: { initialValue?: number }) {
@@ -139,5 +139,33 @@ describe('reactor', () => {
     render(<Parent />);
 
     expect(screen.getByTestId('value').textContent).toBe('1');
+  });
+
+  test('catches changes to a derived it starts reading on a re-render, made before that render commits', () => {
+    const show = createSignal(false);
+    const count = createSignal(0);
+    const doubled = createDerived(() => count.value * 2);
+    const Wrapped = reactor(() => {
+      const visible = show.value;
+
+      // Runs after a render that reads `doubled` for the first time, but before the passive
+      // effect that commits that read as a subscription
+      useLayoutEffect(() => {
+        if (visible && count.value === 0) {
+          count.value = 1;
+        }
+      });
+
+      return <div data-testid="value">{visible ? doubled.value : 'hidden'}</div>;
+    });
+
+    render(<Wrapped />);
+    expect(screen.getByTestId('value').textContent).toBe('hidden');
+
+    act(() => {
+      show.value = true;
+    });
+
+    expect(screen.getByTestId('value').textContent).toBe('2');
   });
 });

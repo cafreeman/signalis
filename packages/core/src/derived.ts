@@ -81,10 +81,16 @@ export class Derived<T> {
         // each source, in the order we read them. A derived source that recomputes to a new value
         // marks us DIRTY, at which point we stop validating and recompute. (Signal sources have
         // nothing to validate: a signal write marks its observers DIRTY directly.)
+        // Inside a batch, a derived source that recomputes to a new value buffers the DIRTY mark it
+        // owes us instead of delivering it, so we collect it after validating each source
+        const inBatch = batchCount() !== 0;
         for (let i = 0; i < sources.length; i++) {
           const source = sources[i];
           assert(source !== undefined, 'source is undefined');
           source.validate();
+          if (inBatch) {
+            runPendingUpdate(source);
+          }
           // Have to recast here because `validate` might end up changing the status to something
           // besides STALE
           if ((this._status as STATUS) === DIRTY) {

@@ -189,6 +189,32 @@ describe('batch', () => {
     expect(effectSpy).toHaveBeenCalledTimes(2);
   });
 
+  test('reading a derived mid-batch delivers the mark buffered by a derived source that changed', () => {
+    const count = createSignal(1);
+    const double = createDerived(() => count.value * 2);
+    const plusOne = createDerived(() => double.value + 1);
+
+    const effectSpy = vi.fn(() => {
+      plusOne.value;
+    });
+
+    createEffect(effectSpy);
+
+    batch(() => {
+      count.value = 2;
+
+      // `double` recomputes to a new value, and the mark it owes `plusOne` is buffered on it
+      // until the batch ends...
+      expect(double.value).toEqual(4);
+      // ...unless `plusOne` is read first, which delivers that mark early
+      expect(plusOne.value).toEqual(5);
+      expect(effectSpy).toHaveBeenCalledOnce();
+    });
+
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+    expect(plusOne.value).toEqual(5);
+  });
+
   test('a big mess of interactions', () => {
     const foo = createSignal(0);
     const bar = createSignal(0);
