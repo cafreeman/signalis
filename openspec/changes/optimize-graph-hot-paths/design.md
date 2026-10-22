@@ -11,41 +11,34 @@ See proposal.md (Why) for the measurements. The relevant current code:
 - **STALE marking (`packages/core/src/derived.ts`).** `Derived#markUpdate` raises the node's status. Only when the node leaves CLEAN does it loop over `_observers`, calling `markUpdate(STALE)` on each one. That recurses through derived observers. A reaction observer's `markUpdate` just schedules it.
   - **Ordering constraint:** the recursion visits nodes depth-first and pre-order. Reactions are scheduled in that order, and `runReactions` drains the queue LIFO, so this visit order sets effect execution order. That order is observable and must not change.
 - **Reads (`Derived#value`).** The getter calls `markDependency(this)` and then always calls `validate()`. On a CLEAN derived outside a batch, `validate()` falls through every branch and only rewrites `_status = CLEAN`. `_status` is `private`.
-- **Re-entrancy.** Delivering marks never runs user code. `Reaction#markUpdate` only schedules, and computations run later, from `validate`/`runReactions`. So neither the flush nor STALE propagation can re-enter itself.
+- **Re-entrancy.** Delivering marks never runs user code. `Reaction#markUpdate` only schedules, and computations run later, from `validate`/`runReactions`. So neither the end-of-batch flush nor STALE propagation can re-enter itself.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Remove the three measured costs while keeping values, recompute counts, effect counts and effect execution order identical.
+- Remove the two measured costs that pay off on the full benchmark while keeping values, recompute counts, effect counts and effect execution order identical.
 - Keep `_status` and other internals off the public type surface.
 
 **Non-Goals:**
 
 - **Iterative pull.** Making `Derived#validate` iterative (as alien-signals' `checkDirty` is) is a larger rewrite. Deep graphs still recurse on reads.
 - **Linked-list dependency edges.** Arrays measured faster than linked lists for nodes with many dependencies (83 ns vs 116 ns for a computed with 10 dependencies).
+- **Changing the pending-update queue.** See decision 1.
 - **Restructuring the batch model.** For example, marking immediately and deferring only the reactions, as alien-signals does.
 - **Changing the reaction queue (`pop()`) or the effect wrapper (`compute` → `trap`).** Both were measured, and neither changed results beyond noise.
 - **Applying the clean-read fast path inside `validate`'s own source loop.** Possible later, but not measured yet.
 
 ## Decisions
 
-### 1. Pending queue: fixed array plus a count
+### 1. Pending queue: left as it is
 
-`STATE.pendingUpdates` stays an array, and a new `STATE.pendingCount` tracks its live length.
+The batch queue was meant to become a fixed array plus a count, cleared slot by slot, so that the array keeps its backing store between batches instead of being truncated with `pending.length = 0`. Isolated micro-benchmarks showed `batch(write) → effect` going from 63.8 ns to 37.5 ns. It was implemented and measured on the full benchmark, and dropped:
 
-- **Queueing:** `markUpdates` writes `pendingUpdates[pendingCount++] = source`.
-- **Flushing:** `runPendingUpdates` walks indices up to the live count, sets each slot to `undefined` before delivering it (so the queue doesn't keep sources alive), then resets the count to 0. The array's backing store stays allocated across batches.
-- **Order:** delivery order stays the order in which sources were first written.
-- **Type:** `Array<ReactiveValue | undefined>`, since consumed slots are cleared.
-- **Duplicates:** a source whose mark was delivered early (a mid-batch read) and is then written again in the same batch is queued a second time, because its `_pendingStatus` is CLEAN again. The end-of-batch pass delivers it at its first slot and skips the second, which then finds it CLEAN. This already happens today. Comment it where the queue is written.
-- **Throwing:** the flush has no `finally`, deliberately. It runs no user code, since marking only schedules, so it has nothing to throw. If it did throw partway, resetting the count would be worse than leaving it: sources in the unvisited slots still have a non-CLEAN `_pendingStatus`, so `markUpdates` would never queue them again and their observers would never be notified. Leaving the count alone lets the next flush deliver them, and the cleared slots are skipped.
+- **Alone,** against the baseline: simple component improved by 5%, but that is inside the run-to-run drift between two identical baseline runs (5.5% on that scenario). Large web app regressed by 6% and wide dense by 5%, against drift of about 1%.
+- **Combined** with the other two fixes, it helped simple component, large web app and deep, cost dynamic component and wide dense about 9% each, and left the total unchanged.
 
-Alternatives considered:
-
-- **`pending.length = 0` (current).** V8 frees the backing store, so the next batch's first push reallocates it. This was 35% of a batch-only profile.
-- **`pending.splice(0)`.** Also releases the storage. It measured 52.5 ns, against 37.5 ns for the counter.
-- **An intrusive linked list (a `_nextPending` field on every source, as Preact does).** It adds a field to every signal and derived, and it's harder to keep in write order with early delivery. It gives no measured benefit over the counter.
+The benchmark batches every write, so this isn't a workload the queue ignores. The micro-benchmark gain doesn't carry over to the graphs the benchmark builds, so the queue stays as it is. The batch tests written for it stay as regression coverage.
 
 ### 2. Iterative STALE propagation with preserved visit order
 
@@ -80,8 +73,8 @@ Alternative considered: restructuring `validate()` so that its CLEAN path return
 
 - **[Effect order silently changes]** → Before touching propagation, add a test that records the order in which effects run and nodes recompute for a branching graph (several reactions under shared deriveds, siblings at multiple depths), and capture the expected order from the current implementation. The test must pass unchanged afterwards. The bench's verified sums and counts give a second check.
 - **[Re-entrancy assumption breaks later]** (for example, if `Reaction#markUpdate` someday runs code synchronously) → Document the assumption where the shared stacks are declared. Keep `markUpdate` on reactions schedule-only.
-- **[Queue or stack slots retaining nodes]** → Clear each queue slot and stack slot as it's consumed, so a flushed batch or finished propagation holds no references.
-- **[Storage never shrinks]** → The queue and the stacks keep their backing stores at the largest batch or graph depth seen. That's the point of the change, and the cost is bounded by that high-water mark, so it's accepted.
+- **[Stack slots retaining nodes]** → Clear each observer slot as its frame is popped, so a finished propagation holds no references.
+- **[Storage never shrinks]** → The stacks keep their backing stores at the deepest graph marked so far. That's the point of reusing them, and the cost is bounded by that high-water mark, so it's accepted.
 - **[Gains are V8- and machine-specific]** → Re-run the full `pnpm bench` after implementation and compare it against the baseline re-recorded in task 1.2. Keep a fix only if it improves at least one scenario outside its min/max spread and regresses none.
 - **[`instanceof` across duplicate module copies]** → Not a concern: `@signalis/react` must not bundle core (already enforced), so there is one `Derived` class per graph.
 
