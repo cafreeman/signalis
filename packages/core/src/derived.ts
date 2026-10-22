@@ -1,5 +1,4 @@
 import {
-  batchCount,
   CLEAN,
   DIRTY,
   getContextIndex,
@@ -8,7 +7,6 @@ import {
   markDependency,
   markUpdates,
   type NOTCLEAN,
-  runPendingUpdate,
   setContextIndex,
   setCurrentContext,
   setRunningComputation,
@@ -63,14 +61,6 @@ export class Derived<T> {
    */
   _observers: Array<ReactiveFunction> | null = null;
 
-  /**
-   * The mark owed to this derived's observers by a change inside the current batch, or CLEAN if
-   * none (see `markUpdates`).
-   *
-   * @internal
-   */
-  _pendingStatus: STATUS = CLEAN;
-
   constructor(fn: () => T, label?: string) {
     this._computeFn = fn;
     this._label = label ?? '';
@@ -79,51 +69,29 @@ export class Derived<T> {
 
   get value(): T {
     markDependency(this);
-    // `validate` does nothing for a CLEAN derived outside a batch, so the common read skips the
-    // call. The condition is small enough for V8 to inline into the caller, which `validate` isn't.
-    // Inside a batch a CLEAN derived can still owe a recompute (see the batch branch in `validate`)
-    if (this._status !== CLEAN || batchCount() !== 0) {
+    // `validate` does nothing for a CLEAN derived, so the common read skips the call. The condition
+    // is small enough for V8 to inline into the caller, which `validate` isn't
+    if (this._status !== CLEAN) {
       this.validate();
     }
     return this._lastValue as T;
   }
 
   validate(): void {
-    if (this._sources) {
+    if (this._status === STALE && this._sources) {
+      // if we're stale, we know that we *might* need to recompute, so we call `validate` on each
+      // source, in the order we read them. A derived source that recomputes to a new value marks us
+      // DIRTY, at which point we stop validating and recompute. (Signal sources have nothing to
+      // validate: a signal write marks its observers DIRTY directly.)
       const { _sources: sources } = this;
-      if (this._status === STALE) {
-        // if we're stale, we know that we *might* need to recompute, so we call `validate` on
-        // each source, in the order we read them. A derived source that recomputes to a new value
-        // marks us DIRTY, at which point we stop validating and recompute. (Signal sources have
-        // nothing to validate: a signal write marks its observers DIRTY directly.)
-        // Inside a batch, a derived source that recomputes to a new value buffers the DIRTY mark it
-        // owes us instead of delivering it, so we collect it after validating each source
-        const inBatch = batchCount() !== 0;
-        for (let i = 0; i < sources.length; i++) {
-          const source = sources[i];
-          assert(source !== undefined, 'source is undefined');
-          source.validate();
-          if (inBatch) {
-            runPendingUpdate(source);
-          }
-          // Have to recast here because `validate` might end up changing the status to something
-          // besides STALE
-          if ((this._status as STATUS) === DIRTY) {
-            break;
-          }
-        }
-      } else if (batchCount() !== 0) {
-        // if we're being pulled on inside of a batch, it's possible that we'll need to recompute
-        // even though we might not be marked as stale or dirty yet since the marks are still
-        // buffered inside of the batch transaction. To handle this scenario, we check whether one
-        // of our sources has a buffered mark, and if we find one, we deliver it now
-        // (`runPendingUpdate`), which marks us dirty so that we recompute. We don't run a risk of
-        // leaking further reactions outside of the transaction here because `markUpdates` keeps
-        // buffering the marks of any further changes for as long as we're still in a batch.
-        for (let i = 0; i < sources.length; i++) {
-          if (runPendingUpdate(sources[i])) {
-            break;
-          }
+      for (let i = 0; i < sources.length; i++) {
+        const source = sources[i];
+        assert(source !== undefined, 'source is undefined');
+        source.validate();
+        // Have to recast here because `validate` might end up changing the status to something
+        // besides STALE
+        if ((this._status as STATUS) === DIRTY) {
+          break;
         }
       }
     }
@@ -290,11 +258,13 @@ export class Derived<T> {
    */
   dispose() {
     unlinkObservers(this, 0);
-    // Invalidate dependents through the batch-aware path: disposal breaks the
-    // upstream subscription, so anything they cached from this node is no
-    // longer trustworthy. DIRTY is required here because a dependent read
-    // inside a batch must recompute immediately when this update is pulled.
-    markUpdates(this, DIRTY);
+    // Invalidate dependents: disposal breaks the upstream subscription, so anything they cached
+    // from this node can no longer be trusted. STALE is enough: they revalidate, which recomputes
+    // this node and resubscribes it, and they only run again if its value actually changed.
+    // Reactions are scheduled but deliberately not run here, because the owner that disposes a
+    // derived often disposes the effects that read it right afterwards (a component unmounting),
+    // and running them in between would fire them for nothing, an API call included
+    markUpdates(this, STALE);
     this._sources = null;
     this._status = DIRTY;
     this._isCollecting = false;

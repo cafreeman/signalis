@@ -291,6 +291,95 @@ describe('Derived', () => {
     });
   });
 
+  test('an effect that reads a disposed derived does not run, and keeps tracking it', () => {
+    const foo = createSignal(1);
+    const bar = createDerived(() => foo.value * 2);
+    const seen: Array<number> = [];
+    createEffect(() => {
+      seen.push(bar.value);
+    });
+
+    bar.dispose();
+
+    expect(seen).toEqual([2]);
+
+    foo.value = 2;
+    foo.value = 3;
+
+    expect(seen).toEqual([2, 4, 6]);
+  });
+
+  test('disposing a derived does not run an effect whose value has not changed', () => {
+    const foo = createSignal(1);
+    const unrelated = createSignal(0);
+    const bar = createDerived(() => foo.value * 2);
+    const effectSpy = vi.fn(() => {
+      bar.value;
+    });
+    createEffect(effectSpy);
+
+    bar.dispose();
+    unrelated.value = 1;
+    unrelated.value = 2;
+
+    expect(effectSpy).toHaveBeenCalledOnce();
+  });
+
+  test('after disposal, an upstream change that leaves the derived value the same does not run the effect', () => {
+    const foo = createSignal(1);
+    const isBig = createDerived(() => foo.value > 100);
+    const effectSpy = vi.fn(() => {
+      isBig.value;
+    });
+    createEffect(effectSpy);
+
+    isBig.dispose();
+    foo.value = 2;
+    foo.value = 3;
+
+    expect(effectSpy).toHaveBeenCalledOnce();
+
+    foo.value = 500;
+
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+  });
+
+  test('an effect disposed right after the derived it reads never runs again', () => {
+    const foo = createSignal(1);
+    const unrelated = createSignal(0);
+    const bar = createDerived(() => foo.value * 2);
+    const effectSpy = vi.fn(() => {
+      bar.value;
+    });
+    const disposeEffect = createEffect(effectSpy);
+
+    bar.dispose();
+    disposeEffect();
+    unrelated.value = 1;
+    foo.value = 2;
+
+    expect(effectSpy).toHaveBeenCalledOnce();
+  });
+
+  test('disposing a derived inside a batch does not run its effects either', () => {
+    const foo = createSignal(1);
+    const bar = createDerived(() => foo.value * 2);
+    const seen: Array<number> = [];
+    createEffect(() => {
+      seen.push(bar.value);
+    });
+
+    batch(() => {
+      bar.dispose();
+    });
+
+    expect(seen).toEqual([2]);
+
+    foo.value = 2;
+
+    expect(seen).toEqual([2, 4]);
+  });
+
   test('can defer source subscriptions until a render commits', () => {
     const foo = createSignal(0);
     const bar = createDerived(() => foo.value);

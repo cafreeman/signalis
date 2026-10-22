@@ -34,10 +34,11 @@ import type { Context, ReactiveFunction, ReactiveValue } from './types.js';
 // source collection, which links sources some time after reading them, checks for sources that
 // were invalidated in between (see `hasInvalidatedSource`).
 //
-// Inside `batch`, the marks a write would push are buffered instead (see `markUpdates`), and
-// delivered when the outermost batch ends, followed by the scheduled reactions, so observers run
-// once per batch rather than once per write. Reading a derived mid-batch delivers its direct
-// sources' buffered marks early, so the read reflects the batch's writes so far.
+// Inside `batch`, writes push their marks as usual, but the reactions they schedule are held back
+// until the outermost batch ends (`batchEnd`), so no effect sees a half-applied update and each one
+// runs once per batch rather than once per write. A derived below a written source is no longer
+// CLEAN, so reading it mid-batch validates it like any other read and reflects every write so far,
+// at any depth.
 
 // State
 export const CLEAN = 0 as const;
@@ -59,11 +60,7 @@ class State {
   // Reactions waiting to be validated. A reaction's `_isScheduled` flag records whether it's in
   // here, so each one is queued at most once
   scheduledReactions: Array<Reaction> = [];
-  // Sources whose observers are owed a mark from a write inside the current batch, in the order
-  // they were first written. The mark itself is stored on the source, as `_pendingStatus`, which is
-  // CLEAN when nothing is owed
-  pendingUpdates: Array<ReactiveValue> = [];
-  // How many `batch` calls are currently open; marks are buffered while this is nonzero
+  // How many `batch` calls are currently open; reactions are held back while this is nonzero
   batchCount = 0;
   // Tracking suspension is implemented as a counter rather than a boolean so
   // that `untrack` calls nest correctly: an inner `untrack` ending must not
@@ -106,7 +103,6 @@ export function batchEnd(): void {
   STATE.batchCount--;
 
   if (STATE.batchCount === 0) {
-    runPendingUpdates();
     runReactions();
   }
 }
@@ -170,20 +166,12 @@ function runUpdatesForObserver(observers: Array<ReactiveFunction>, status: NOTCL
 }
 
 // Mark every observer of a source with `status`; a source calls this with DIRTY when its value
-// changes. Inside a batch, the mark is buffered on the source as its `_pendingStatus` instead, and
-// the source is queued once in `pendingUpdates`; repeated writes to the same source within the batch
-// just overwrite the buffered mark. The buffered marks are delivered when the batch ends, or earlier
-// if a dependent derived is read mid-batch (see `runPendingUpdate`).
+// changes. The marks are pushed straight away, inside a batch too: a derived below a changed source
+// is never CLEAN, so reading it validates it as usual and sees every write made so far. Reactions
+// that get marked are only scheduled here, and the batch holds back running them (see `batchEnd`).
 export function markUpdates(source: ReactiveValue, status: NOTCLEAN): void {
   if (source._observers) {
-    if (batchCount() !== 0) {
-      if (source._pendingStatus === CLEAN) {
-        STATE.pendingUpdates.push(source);
-      }
-      source._pendingStatus = status;
-    } else {
-      runUpdatesForObserver(source._observers, status);
-    }
+    runUpdatesForObserver(source._observers, status);
   }
 }
 
@@ -205,34 +193,6 @@ export function runReactions(): void {
     reaction._isScheduled = false;
     reaction.validate();
   }
-}
-
-// Deliver every mark buffered by the batch that just ended. Delivering a mark can queue more
-// sources, which are appended to the list and delivered in the same pass.
-function runPendingUpdates(): void {
-  const pending = STATE.pendingUpdates;
-
-  for (let i = 0; i < pending.length; i++) {
-    runPendingUpdate(pending[i]);
-  }
-
-  pending.length = 0;
-}
-
-// Deliver a source's buffered batch mark to its observers, if it has one, and report whether it did.
-// Delivering the mark resets the source's `_pendingStatus` to CLEAN, so a mark delivered early (when
-// a dependent derived is read mid-batch) isn't delivered again when the batch ends. The source can
-// stay in `pendingUpdates` after an early delivery: the end-of-batch pass skips CLEAN sources.
-export function runPendingUpdate(v: ReactiveValue | undefined): boolean {
-  if (!v || v._pendingStatus === CLEAN) {
-    return false;
-  }
-
-  const status = v._pendingStatus;
-  v._pendingStatus = CLEAN;
-  runUpdatesForObserver(v._observers!, status);
-
-  return true;
 }
 
 export function suspendTracking() {

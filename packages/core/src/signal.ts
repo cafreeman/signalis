@@ -1,6 +1,6 @@
 import type { Derived } from './derived.js';
 import type { Reaction } from './reaction.js';
-import { CLEAN, DIRTY, markDependency, markUpdates, runReactions, type STATUS } from './state.js';
+import { batchCount, DIRTY, markDependency, markUpdates, runReactions } from './state.js';
 
 type Equality<T> = (oldValue: T, newValue: T) => boolean;
 
@@ -24,14 +24,6 @@ export class _Signal<T> {
    * @internal
    */
   _observers: Array<Derived<unknown> | Reaction> | null = null;
-
-  /**
-   * The mark owed to this signal's observers by a write inside the current batch, or CLEAN if
-   * none (see `markUpdates`).
-   *
-   * @internal
-   */
-  _pendingStatus: STATUS = CLEAN;
 
   constructor(value: T, isEqual: Equality<T> | false = baseEquality) {
     this._value = value;
@@ -62,13 +54,16 @@ export class _Signal<T> {
     return this._value;
   }
 
-  // A write that changes the value marks every observer DIRTY (buffered instead, inside a batch;
-  // see `markUpdates`), then validates whatever reactions are scheduled
+  // A write that changes the value marks every observer DIRTY, then validates whatever reactions
+  // are scheduled. Inside a batch the reactions stay scheduled until the outermost batch ends
+  // (`batchEnd`), so no effect observes a half-applied set of writes
   set value(newValue: T) {
     if (!this._isEqual(this._value, newValue)) {
       this._value = newValue;
       markUpdates(this, DIRTY);
-      runReactions();
+      if (batchCount() === 0) {
+        runReactions();
+      }
     }
   }
 }
