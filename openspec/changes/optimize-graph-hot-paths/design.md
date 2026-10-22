@@ -7,7 +7,7 @@ See proposal.md (Why) for the measurements. The relevant current code:
 - **Batch buffering (`packages/core/src/state.ts`).**
   - `markUpdates` buffers a write made inside a batch by recording the mark on the source (`_pendingStatus`) and pushing the source onto `STATE.pendingUpdates`, once per source.
   - `runPendingUpdates` delivers the marks and then truncates the array with `pending.length = 0`.
-  - `runPendingUpdate` can also deliver one source's mark early, when a derived is read mid-batch. It resets that source to CLEAN, so the end-of-batch pass skips it.
+  - `runPendingUpdate` can also deliver one source's mark early: when a derived is read mid-batch, and when a STALE derived validates a derived source mid-batch (collecting the DIRTY mark that source buffered when it recomputed). It resets that source to CLEAN, so the end-of-batch pass skips it.
 - **STALE marking (`packages/core/src/derived.ts`).** `Derived#markUpdate` raises the node's status. Only when the node leaves CLEAN does it loop over `_observers`, calling `markUpdate(STALE)` on each one. That recurses through derived observers. A reaction observer's `markUpdate` just schedules it.
   - **Ordering constraint:** the recursion visits nodes depth-first and pre-order. Reactions are scheduled in that order, and `runReactions` drains the queue LIFO, so this visit order sets effect execution order. That order is observable and must not change.
 - **Reads (`Derived#value`).** The getter calls `markDependency(this)` and then always calls `validate()`. On a CLEAN derived outside a batch, `validate()` falls through every branch and only rewrites `_status = CLEAN`. `_status` is `private`.
