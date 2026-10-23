@@ -14,6 +14,7 @@ import {
   STALE,
   type STATUS,
 } from './state.js';
+import { type ErrorSource, reportEffectError } from './error.js';
 import type { Context, ReactiveValue } from './types.js';
 import { hasInvalidatedSource, reconcileSources, unlinkObservers } from './utils.js';
 
@@ -48,6 +49,13 @@ export class Reaction {
   status: STATUS = CLEAN;
 
   isDisposed = false;
+
+  /**
+   * Which construct to name when this reaction's error is reported to the error handler.
+   *
+   * @internal
+   */
+  _source: ErrorSource = 'reaction';
 
   /**
    * Whether this reaction is waiting in the queue that `runReactions` drains (see
@@ -90,6 +98,13 @@ export class Reaction {
       }
 
       return cleanupFn;
+    } catch (error) {
+      // Keep the sources read before the throw, so the reaction runs again when any of them changes.
+      // A collecting render records nothing: one that suspended or errored must leave no observers
+      if (!this._isCollecting) {
+        reconcileSources(this);
+      }
+      throw error;
     } finally {
       setCurrentContext(prevContext);
       setContextIndex(prevContextIndex);
@@ -101,27 +116,36 @@ export class Reaction {
     if (this.isDisposed) {
       return;
     }
-    if (this.status === STALE) {
-      const { _sources: sources } = this;
-      if (sources) {
-        for (let i = 0; i < sources.length; i++) {
-          sources[i]?.validate();
-          // Have to recast here because `validate` might end up changing the status to something
-          // besides STALE
-          if ((this.status as STATUS) === DIRTY) {
-            // As soon as we find a single DIRTY source, we know that we need to re-compute, so we
-            // immediately bail
-            break;
+    // A reaction that runs here was scheduled by a change, so nobody is waiting on it to throw: the
+    // error goes to the error handler instead. `runReactions` never sees a throw, and the reaction
+    // always settles CLEAN, so a later change can schedule it again
+    try {
+      if (this.status === STALE) {
+        const { _sources: sources } = this;
+        if (sources) {
+          for (let i = 0; i < sources.length; i++) {
+            sources[i]?.validate();
+            // Have to recast here because `validate` might end up changing the status to something
+            // besides STALE
+            if ((this.status as STATUS) === DIRTY) {
+              // As soon as we find a single DIRTY source, we know that we need to re-compute, so we
+              // immediately bail
+              break;
+            }
           }
         }
       }
-    }
 
-    if (this.status === DIRTY) {
-      this.compute();
+      if (this.status === DIRTY) {
+        this.compute();
+      }
+    } catch (error) {
+      reportEffectError(error, this._source);
+    } finally {
+      // Settling CLEAN has to come after `compute`: while it runs the reaction stays DIRTY, so a
+      // write to one of its own sources doesn't schedule it again
+      this.status = CLEAN;
     }
-
-    this.status = CLEAN;
   }
 
   compute(): void | (() => void) {
@@ -209,6 +233,10 @@ export class Reaction {
    * @internal
    */
   dispose() {
+    // A second dispose must not unlink again or run the cleanup again
+    if (this.isDisposed) {
+      return;
+    }
     // Pass 0 as the start index so we unlink from *all* of our sources, no
     // matter what computation (if any) is running when dispose is called
     unlinkObservers(this, 0);

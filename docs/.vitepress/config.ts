@@ -36,6 +36,7 @@ export default defineConfig({
             { text: 'Signals', link: '/core/signals' },
             { text: 'Derived', link: '/core/derived' },
             { text: 'Effects', link: '/core/effects' },
+            { text: 'Error Handling', link: '/core/error-handling' },
             { text: 'Resources', link: '/core/resources' },
             { text: 'Stores', link: '/core/stores' },
             { text: 'Utilities', link: '/core/utilities' },

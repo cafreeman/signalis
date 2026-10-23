@@ -16,8 +16,9 @@ export function when(predicate: () => boolean, fn: () => void, options?: WhenOpt
       });
 
       if (cond) {
-        fn();
+        // Dispose first, so the callback runs at most once even if it throws
         this.dispose();
+        fn();
       }
     });
   } else {
@@ -33,8 +34,14 @@ export function when(predicate: () => boolean, fn: () => void, options?: WhenOpt
       }
     });
   }
+  reaction._source = 'when';
 
-  reaction.compute();
+  try {
+    reaction.compute();
+  } catch (error) {
+    reaction.dispose();
+    throw error;
+  }
 
   return reaction.dispose.bind(reaction);
 }

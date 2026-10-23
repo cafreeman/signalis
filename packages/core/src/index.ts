@@ -8,3 +8,4 @@ export { createStore } from './store.js';
 export { untrack } from './untrack.js';
 export { update } from './update.js';
 export { when } from './when.js';
+export { setErrorHandler, type ErrorHandler, type ErrorInfo, type ErrorSource } from './error.js';

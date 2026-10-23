@@ -543,6 +543,7 @@ createEffect(() => {
 
 ## See Also
 
+- [Error Handling](/core/error-handling) - Where an effect's errors go, and `setErrorHandler`
 - [Signals](/core/signals) - Writable reactive values
 - [Derived](/core/derived) - Computed values (use instead of effects for values)
 - [Utilities](/core/utilities) - `batch()` for grouping updates
