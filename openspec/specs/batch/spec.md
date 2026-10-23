@@ -86,7 +86,7 @@ Disposing a derived value SHALL NOT run an effect that reads it unless the deriv
 
 ### Requirement: An effect runs once per batch
 
-An effect whose sources changed during a batch SHALL run exactly once after the outermost batch ends, however many of its sources were written or how many times each was written.
+An effect whose sources changed during a batch SHALL run exactly once after the outermost batch ends, however many of its sources were written or how many times each was written. The order in which different effects run after the batch is not specified.
 
 #### Scenario: Several writes to the same and different signals
 
