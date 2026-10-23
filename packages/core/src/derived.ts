@@ -1,4 +1,5 @@
 import {
+  batchCount,
   CLEAN,
   DIRTY,
   getContextIndex,
@@ -7,6 +8,7 @@ import {
   markDependency,
   markUpdates,
   type NOTCLEAN,
+  runReactions,
   setContextIndex,
   setCurrentContext,
   setRunningComputation,
@@ -28,17 +30,41 @@ const DerivedTag = Symbol('Derived');
 const stackObservers: Array<Array<ReactiveFunction> | undefined> = [];
 const stackIndices: Array<number> = [];
 
+// Stands in for the cached error of a disposed derived, so nothing matches it
+const DISPOSED = Symbol('disposed');
+
+function isThenable(v: unknown): v is PromiseLike<unknown> {
+  return (
+    v !== null &&
+    (typeof v === 'object' || typeof v === 'function') &&
+    typeof (v as { then?: unknown }).then === 'function'
+  );
+}
+
 // Derived
 //
 // A lazy, cached computation. It computes nothing until its `value` is read, and after that it
 // recomputes only when it's read while not CLEAN (see "How updates flow through the graph" in
 // `state.ts`). It starts out DIRTY with no sources, so the first read runs the computation and
 // subscribes the derived to whatever it reads.
+//
+// If the function throws, the derived treats the error as its result: it settles CLEAN with the
+// error cached, notifies its observers like any other change, and rethrows the error on every read
+// until a source it read changes. It keeps the sources it read before the throw. Settling CLEAN
+// matters: a derived left DIRTY would never notify its observers again, because it only does so
+// when it first leaves CLEAN.
 export class Derived<T> {
   readonly type = DerivedTag;
 
   private _computeFn: () => T;
   private _lastValue?: T;
+  // The error the function threw on its last run, if it threw (`_hasError` says whether). Kept
+  // apart from `_lastValue` so that a throw doesn't discard the value, and so a thrown `undefined`
+  // is still an error
+  private _error: unknown = undefined;
+  private _hasError = false;
+  // The thenable we last attached `invalidate` callbacks to, so each one gets them only once
+  private _watched: PromiseLike<unknown> | undefined = undefined;
   private _status: STATUS = DIRTY;
   private _isCollecting = false;
   private _hasPendingSources = false;
@@ -73,6 +99,9 @@ export class Derived<T> {
     // is small enough for V8 to inline into the caller, which `validate` isn't
     if (this._status !== CLEAN) {
       this.validate();
+    }
+    if (this._hasError) {
+      throw this._error;
     }
     return this._lastValue as T;
   }
@@ -112,24 +141,83 @@ export class Derived<T> {
     setContextIndex(0);
     setRunningComputation(this);
 
-    const result = this._computeFn();
+    let result: T | undefined;
+    let error: unknown;
+    let threw = false;
 
-    if (this._isCollecting) {
-      this._pendingContext = getCurrentContext();
-      this._pendingContextIndex = getContextIndex();
-      this._hasPendingSources = true;
+    try {
+      try {
+        result = this._computeFn();
+      } catch (e) {
+        threw = true;
+        error = e;
+      }
+
+      // Record the sources read before a throw too, using this derived's own frame, so it
+      // recomputes when any of them changes
+      if (this._isCollecting) {
+        this._pendingContext = getCurrentContext();
+        this._pendingContextIndex = getContextIndex();
+        this._hasPendingSources = true;
+      } else {
+        reconcileSources(this);
+      }
+    } finally {
+      setCurrentContext(prevContext);
+      setContextIndex(prevContextIndex);
+      setRunningComputation(prevComputation);
+    }
+
+    if (threw) {
+      // A different error, or an error where there was a value, is a change
+      const changed = !this._hasError || this._error !== error;
+      this._hasError = true;
+      this._error = error;
+
+      if (changed) {
+        markUpdates(this, DIRTY);
+      }
+
+      if (isThenable(error)) {
+        this._watch(error);
+      }
     } else {
-      reconcileSources(this);
-    }
+      // A value where there was an error is a change, even if it equals the last value
+      const changed = this._hasError || result !== this._lastValue;
+      this._hasError = false;
+      this._error = undefined;
+      this._lastValue = result as T;
 
-    setCurrentContext(prevContext);
-    setContextIndex(prevContextIndex);
-    setRunningComputation(prevComputation);
-
-    if (result !== this._lastValue) {
-      markUpdates(this, DIRTY);
-      this._lastValue = result;
+      if (changed) {
+        markUpdates(this, DIRTY);
+      }
     }
+  }
+
+  // A derived that throws a promise (a Suspense-style "not ready yet") has to recompute once the
+  // promise settles, even though no source changed. This is the one place a derived causes effects
+  // to run, and it does so from the promise's callback, never from a read. It has to attach its
+  // callbacks here, while computing: that happens before the throw reaches a framework that
+  // retries on the same promise, so `invalidate` runs first and the retry finds the derived DIRTY.
+  private _watch(thenable: PromiseLike<unknown>): void {
+    if (this._watched === thenable) {
+      return;
+    }
+    this._watched = thenable;
+
+    const invalidate = () => {
+      // `dispose` clears the error, so this also covers a derived that was disposed in the meantime
+      if (!this._hasError || this._error !== thenable) {
+        return;
+      }
+      this.markUpdate(DIRTY);
+
+      if (batchCount() === 0) {
+        runReactions();
+      }
+    };
+
+    thenable.then(invalidate, invalidate);
   }
 
   markUpdate(status: NOTCLEAN) {
@@ -267,6 +355,12 @@ export class Derived<T> {
     markUpdates(this, STALE);
     this._sources = null;
     this._status = DIRTY;
+    // Drop the cached error but not the fact that observers last saw one: if this derived recovers
+    // to the value it had before it threw, that still has to count as a change for them
+    if (this._hasError) {
+      this._error = DISPOSED;
+    }
+    this._watched = undefined;
     this._isCollecting = false;
     this._hasPendingSources = false;
   }

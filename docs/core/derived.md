@@ -316,5 +316,6 @@ isDerived(doubled); // true
 
 - [Signals](/core/signals) - Writable reactive values
 - [Effects](/core/effects) - For side effects instead of values
+- [Error Handling](/core/error-handling) - A derived value that throws caches its error until a source changes
 - [Utilities](/core/utilities) - Helper functions for working with reactive primitives
 - [Core Concepts](/guide/core-concepts) - Understanding lazy evaluation

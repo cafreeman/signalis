@@ -47,8 +47,11 @@ const handler: ProxyHandler<FunctionComponent<any>> = {
       forceUpdate();
 
       return () => {
-        reactionRef.current!.dispose();
+        // Clear the ref before disposing, so a dispose that throws can't leave a disposed reaction
+        // behind for the next setup to reuse
+        const reaction = reactionRef.current;
         reactionRef.current = null;
+        reaction?.dispose();
       };
     }, EMPTY);
 
