@@ -168,4 +168,94 @@ describe('reactor', () => {
 
     expect(screen.getByTestId('value').textContent).toBe('2');
   });
+
+  // A component that writes, during its own render, a signal it read in that render. These pin the
+  // current behavior so that changes to how reactor catches writes between render and commit keep it
+  describe('writes a signal it reads, during its own render', () => {
+    function createWriter(write: (signal: { value: number }) => void) {
+      const signal = createSignal(0);
+      const counts = { renders: 0 };
+      const Wrapped = reactor(() => {
+        counts.renders++;
+        const value = signal.value;
+        write(signal);
+        return <div data-testid="value">{value}</div>;
+      });
+
+      return { signal, counts, Wrapped };
+    }
+
+    test('on mount, re-renders to show a write that settles', () => {
+      const { signal, counts, Wrapped } = createWriter((target) => {
+        if (target.value < 1) {
+          target.value = 1;
+        }
+      });
+
+      render(<Wrapped />);
+
+      expect(signal.value).toBe(1);
+      expect(screen.getByTestId('value').textContent).toBe('1');
+      expect(counts.renders).toBe(2);
+    });
+
+    test('on mount, a write of the value it already has changes nothing', () => {
+      const { signal, Wrapped } = createWriter((target) => {
+        const current = target.value;
+        target.value = current;
+      });
+
+      render(<Wrapped />);
+
+      expect(signal.value).toBe(0);
+      expect(screen.getByTestId('value').textContent).toBe('0');
+    });
+
+    test('on mount, a write that never settles fails loudly instead of hanging', () => {
+      const { Wrapped } = createWriter((target) => {
+        target.value = target.value + 1;
+      });
+
+      expect(() => render(<Wrapped />)).toThrow(/Too many re-renders/);
+    });
+
+    test('on a re-render, re-renders to show a write that settles', () => {
+      let armed = false;
+      const { signal, counts, Wrapped } = createWriter((target) => {
+        if (armed && target.value < 5) {
+          target.value = 5;
+        }
+      });
+
+      render(<Wrapped />);
+      const rendersAfterMount = counts.renders;
+
+      act(() => {
+        armed = true;
+        signal.value = 1;
+      });
+
+      expect(signal.value).toBe(5);
+      expect(screen.getByTestId('value').textContent).toBe('5');
+      expect(counts.renders - rendersAfterMount).toBe(2);
+    });
+
+    test('on a re-render, a write that never settles fails loudly instead of hanging', () => {
+      let armed = false;
+      const { signal, Wrapped } = createWriter((target) => {
+        if (armed) {
+          target.value = target.value + 1;
+        }
+      });
+
+      render(<Wrapped />);
+
+      expect(() =>
+        act(() => {
+          armed = true;
+          signal.value = 1;
+        }),
+      ).toThrow(/Too many re-renders/);
+    });
+  });
 });
