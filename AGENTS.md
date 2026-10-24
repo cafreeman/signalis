@@ -75,6 +75,8 @@ Add `when` and `untrack` to the public API
 - `minor`: new exports, optional parameters, deprecations
 - `major`: removing/renaming public APIs or breaking signatures
 
+**Before 1.0, never use `major`:** at `0.x`, a `major` changeset releases `1.0.0`. Ship breaking changes as `minor` and call them out with a **BREAKING:** bullet in the changeset, giving the before and after and how to migrate.
+
 **Fixed release group:** `.changeset/config.json` pins `@signalis/core` and `@signalis/react` to release in lockstep at the same version. A changeset touching either package bumps both; that's expected and prevents version drift between them.
 
 **Verify pending changesets:** `pnpm changeset status` (read-only; shows the planned bumps).
