@@ -3,6 +3,7 @@ pnpm-lock.yaml
 docs/api
 .cursor
 .claude
+.pi
 openspec
 .github/workflows/claude*.yml
 packages/*/CHANGELOG.md
