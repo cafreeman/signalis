@@ -2,70 +2,89 @@
 
 ## Context
 
-Deferred source collection: during a render, `reactor`'s reaction and every `useDerived` derived record what they read instead of linking it (`_beginSourceCollection`, then `trap`/`compute` store a pending context). After commit, a passive effect calls `_commitSourceCollection`, which links the pending sources and then calls `hasInvalidatedSource` on the newly linked ones (the leading sources were linked all along, so writes to them already notified the computation).
+See `proposal.md` for the stale-render cases. During render, `reactor` reactions and `useDerived` deriveds defer source linking: `trap` or `compute` saves a pending context, and a passive effect commits it. Existing leading sources remain linked. `hasInvalidatedSource` currently checks only newly linked sources' current status, which has no history of signal writes or derived results recomputed before subscription.
 
-`hasInvalidatedSource` asks each new source `_isClean()`. A derived answers from its status, but `Signal#_isClean()` always returns `true`, so a signal written between render and commit is never caught. Two more gaps sit next to that one:
+Two lifetimes differ. A reaction runs its render trap again on a replay, but a CLEAN `useDerived` can reuse its cache and earlier pending context. `useDerived` calls `_beginSourceCollection` in both cases. Resetting observation metadata at that hook invocation would detach it from the computation that produced the cache.
 
-- When `Reaction#_commitSourceCollection` finds a stale source, it marks itself STALE. A STALE computation validates its sources, but validating a signal does nothing, so a reaction whose only changed source is a signal would stay STALE and never run.
-- `Derived#_commitSourceCollection` marks itself STALE but never drains the reaction queue, so a reaction it schedules waits for some unrelated write.
-
-`reactor`'s mount effect calls `forceUpdate()` unconditionally (added in 2e84e27 to catch writes from ancestor layout effects). That covers signals a component reads directly on mount, at the cost of a second render for every component. It doesn't cover `useDerived`, because the second render reads the derived's cached value, and it doesn't cover re-renders at all.
-
-Hook order matters at commit: `reactor` registers its two effects before it calls the component, so they run before any effect the component registers, `useDerived`'s included. On mount, the reaction therefore links to a `useDerived` derived before that derived links to its own sources.
+Hook order also matters: `reactor` registers its effects before the component registers `useDerived`'s effects. The reaction can therefore link to the derived before that derived commits its own sources. A derived commit must notify that reaction and drain the queue outside a batch; today it does not drain it.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Make the commit-time check see signals written after the render that read them, for reactions and deriveds alike.
-- Remove the unconditional mount render, keeping the Strict Mode remount render.
-- Keep behavior pinned by `reactor.spec.tsx` unchanged: writes a component makes during its own render, abandoned renders leaving no subscriptions, renders per batch.
+- Compare what a deferred read observed with the source's current result, not just its current CLEAN/STALE/DIRTY status.
+- Keep pending source observations and their cached result together through render replays, recomputation, errors, commit and disposal.
+- Remove the unconditional mount render while preserving Strict Mode recovery, abandoned-render safety, own-render writes, batch behavior and error-handling invariants.
+- Preserve suppression when an invalidated derived recomputes to the same result.
 
 **Non-Goals:**
 
-- Changing when sources are collected or linked.
-- Changing core behavior outside deferred collection. Reactions and deriveds that aren't collecting never call the changed code.
-- Detecting writes made during the render *before* the read (see Decision 2): a write the render saw is still counted, which only costs a render.
+- Changing when subscriptions become live, or changing ordinary core equality, scheduling and error semantics.
+- Deduplicating dependency edges or adopting the slot arrays in `optimize-dependency-edges`. This change works with today's duplicate edges and either outcome of that proposal.
+- Allocating observation snapshots for ordinary, non-deferred computations.
 
 ## Decisions
 
-### 1. A global write counter, and a per-signal stamp
+### 1. Version the result of both signals and deriveds
 
-`State` gets a counter. A signal write that changes the value increments it and stores the new count on the signal (`_writtenAt`). A collecting computation records the counter when collection begins. At commit, a newly linked signal source whose `_writtenAt` is greater than the recorded count was written after the render started.
+Each signal and derived gets an internal monotonically increasing result version. A signal increments its version when its equality policy accepts a write, before notifying observers. A derived increments its version when it changes the result that its readers can observe, before notifying them: a different value, a different cached error, or a transition between a value and an error. A derived that recomputes to the same result keeps its version. Merely becoming STALE or DIRTY does not increment it.
 
-- **Why a stamp per signal, not just the global counter:** comparing only the global counter would re-render a component for any write anywhere in the app between its render and its commit. That's correct but over-eager. The per-signal stamp costs one number per signal and only fires for sources the component actually read.
-- **Alternative rejected: a version on every signal, recorded per read.** Exact, but it costs a slot per pending source on every collecting render, to save renders only for writes made during the render before the read. Not worth it.
-- **Alternative rejected: keep the mount render and fix only `useDerived`.** It leaves the re-render gap and the doubled mount cost.
+Versions do not reset on `Derived#dispose`: disposing still marks dependents STALE without running effects, and a later read may resurrect the same node. Reusing an old version could hide a result change from an outstanding reader. Preserve the existing cached-error and thrown-promise rules, including reads before a throw and invalidation when a promise settles.
 
-### 2. Record the count when collection begins
+- **Why both node kinds:** a derived can change, notify its existing observers, and become CLEAN before a new reader subscribes. Its new version still exposes that the rendered result is old.
+- **Alternative rejected: signal-only write epochs and derived status.** That cannot detect the CLEAN-but-changed derived case.
+- **Alternative rejected: incrementing a derived on invalidation.** That would treat unchanged derived results as changed and lose lazy equality suppression.
 
-The counter is recorded in `_beginSourceCollection`, at the start of the render, not at its end.
+### 2. Capture the version actually observed by each deferred read
 
-- **Why:** a component that writes, during its own render, a signal it read earlier in that render has shown the old value. Counting from the start of the render treats that write as "after the read", so the commit re-renders the component and it shows the settled value. This is exactly today's mount behavior (pinned by "on mount, re-renders to show a write that settles"), which today comes from the unconditional mount render. Recording at the end would show the stale value.
-- **Cost:** a write made during the render to a source *before* it was read is also counted, causing one unnecessary render. That's rare and harmless.
-- **A write that never settles** still loops into React's re-render limit error, as today: each render's write is newer than that render's start.
+Keep source-link collection in `markDependency`, but record observation metadata separately from that pre-validation call. A signal getter records its current version with its returned value. A derived getter records its version **after validation**, immediately before returning its result or rethrowing its cached error. The snapshot therefore describes what the caller actually saw, not the version before a lazy first computation. Tracking suspension applies to both operations.
 
-### 3. Tell callers what kind of source changed
+An observation contains the source and its observed version. Record observations only for the currently running computation when it is deferring source collection. Save and restore this bookkeeping alongside the existing computation/context frame on nested computations and every throw path. A non-deferred computation does not allocate a snapshot list.
 
-`hasInvalidatedSource` reports whether a new source is a derived that isn't CLEAN (the computation might need to rerun: mark STALE, as today) or a signal written since the recorded count (the computation must rerun: mark DIRTY). A STALE mark alone can't make a computation rerun for a signal, because validating a signal does nothing.
+Observations cover all tracked reads in that computation, including sources in the unchanged leading portion of `_sources`, not only the newly linked tail. Repeated reads must not overwrite evidence of an earlier read: if a source changes between two reads in one computation, retain both observations or the earliest version. Graph-edge deduplication must not suppress this consistency evidence. Internal calls to `validate` are not user reads and do not invent observations.
 
-- `Derived#_isClean()` keeps its meaning. `Signal#_isClean()` is replaced by the stamp comparison, which needs the recorded count, so the check takes it as a parameter.
+- **Why post-validation:** recording a lazy derived's old version would force a second mount render even though the component already rendered its freshly computed result.
+- **Why per-read observations rather than a render-start epoch:** they distinguish actual reads from unrelated writes and, crucially, describe cached reads that survive a later render invocation. The extra storage is restricted to deferred collection.
 
-### 4. Drain reactions after a derived commits
+### 3. Bind observations to the pending computation, not each render start
 
-When `Derived#_commitSourceCollection` marks itself, it drains the reaction queue (outside a batch), as `Reaction#_commitSourceCollection` already does. Otherwise the `reactor` reaction it schedules waits for an unrelated write.
+Treat pending context, its divergence index and its source observations as one tuple. Publish or replace them together, following the existing successful-trap and derived-computation rules. Do not associate the tuple with a new render merely because `_beginSourceCollection` was called again.
+
+| Event | Reaction | Derived |
+| --- | --- | --- |
+| Begin/repeat collection | Prepare a fresh render trap; discard superseded uncommitted reaction observations. | Enable deferred collection; preserve an existing pending tuple while its cache is reused. |
+| Trap/compute executes | Publish the successful trap's tuple; a throwing render does not publish partial subscriptions. | Replace the tuple with this computation's reads, including reads before a cached error, using the restored computation frame. |
+| Render reuses a CLEAN cache | The reaction still traps the render and observes the derived's current result version. | Do not replace its earlier source observations or manufacture a fresh observation time. |
+| Commit | Reconcile and check the selected pending tuple, then clear it. | Reconcile and check the tuple associated with the cached computation, then clear it. |
+| Dispose | Drop pending tuples and release source references. | Drop pending tuples and release source references; retain the monotonically increasing result version. |
+
+For the replay regression: the first computation records `s` at version V0 and caches `2`; a render writes `s = 5` at V1 and schedules a state adjustment. The replay reuses `2`, so its derived keeps the V0 observation. Commit detects V1 versus V0, recomputes and delivers `10`. There is no new render-start epoch that can erase V0.
+
+### 4. Combine version mismatches and current invalidation status
+
+After reconciling the pending sources, `hasInvalidatedSource` evaluates the retained observations and reports the strongest required mark:
+
+- **DIRTY:** any observed source's result version differs, whether it is a signal or a derived and whether it is currently CLEAN or not.
+- **STALE:** no version mismatch was found, but an observed derived is not CLEAN and needs validation to determine whether its result changed.
+- **CLEAN:** versions match and every observed derived is current.
+
+DIRTY takes precedence regardless of read order; a STALE derived must not cause an early return that hides a later version mismatch. A STALE mark alone cannot catch a missed signal write or an already-CLEAN changed derived, because validating those sources need not emit another notification.
+
+Reaction and derived commits raise their status with that mark using the normal notification path. Outside a batch they drain scheduled reactions after marking, including after a derived commit. Inside a batch they leave the queue to the outermost batch end. Drop the consumed tuple before running queued user work so re-entry cannot reuse it. Preserve the existing CLEAN/status restoration and error routing rather than introducing a new read-time flush.
 
 ### 5. Mount render only after a Strict Mode remount
 
-`reactor`'s mount effect calls `forceUpdate()` only when it had to create a fresh reaction (the ref is empty after Strict Mode's simulated unmount), because that reaction has no sources until the component renders again. A normal mount relies on the commit check instead.
+`reactor` calls `forceUpdate` in its mount effect only if it had to create a fresh reaction after Strict Mode cleanup. A normal mount relies on observation checking. On an unchanged lazy `useDerived` mount, the reaction observes the derived's version after its first computation and all source observations still match, so neither commit forces a render.
 
 ## Risks / Trade-offs
 
-- **[Order of commit effects changes]** On mount, the `reactor` reaction links to a `useDerived` derived before the derived links its sources. → The derived's commit marks itself DIRTY, which notifies the already linked reaction, and Decision 4 drains it. The known-issue test "useDerived catches signal changes made by ancestor layout effects on mount" covers this.
-- **[A component re-renders more often than needed]** Decision 2 counts some writes the render already saw. → At most one extra render, and only when a component writes to a source during its own render.
-- **[Benchmark cost]** One more field on `_Signal` and a counter increment per changing write. → Re-run `pnpm bench` against a fresh baseline and accept only noise-level differences. Writes in the benchmark are hot, so check simple component in particular.
-- **[Behavior relied on the extra mount render]** Something besides the ancestor-layout-effect case might depend on it. → The full React suite runs without the forced render. The new Strict Mode test covers the one path that keeps it.
+- **[Deferred allocations and hot getter/version overhead]** One version field per reactive value, updates on accepted result changes, and snapshot storage for deferred reads. → Measure the ordinary core benchmark against a fresh baseline and separately measure repeated React mounts and render replays. If overhead exceeds the measured spread, pause for a design decision rather than remove either consistency guarantee.
+- **[Snapshot lifecycle drifts from pending sources]** Replays, errors and disposal can otherwise retain the wrong tuple or source references. → Core lifecycle tests and the replay regression exercise replacement, reuse, consumption and cleanup; the existing Suspense/error-boundary observer assertions remain mandatory.
+- **[Version capture happens too early or is lost to deduplication]** → Test a first lazy computation, an error result, repeated reads around a write, and both the existing graph and any retained edge optimization.
+- **[Changed derived results are confused with invalidation]** → Test CLEAN-but-changed deriveds and invalidated-but-unchanged deriveds, including value/error transitions. Do not add renders for merely recomputing an equal result.
+- **[Commit work runs effects at the wrong time]** → Test reaction and derived commits inside a batch and preserve the no-effects-on-dispose contract. Existing batch/error-handling specifications and tests remain acceptance criteria.
+- **[Behavior relied on the extra mount render]** → Keep all five own-render write guards, add a lazy-derived single-render assertion and a Strict Mode subscription test, and run the full React suite without the unconditional render.
 
 ## Migration Plan
 
-No API change. Ship as a `patch` changeset for `@signalis/react` and `@signalis/core`. Rollback is a plain revert.
+No public API change. Ship a `patch` changeset for `@signalis/react` and `@signalis/core` after the behavioral and performance checks pass. Rollback is a plain revert. This revision changes planning artifacts only; regression tests and version bookkeeping are implementation tasks, not implemented here.

@@ -13,7 +13,7 @@
 **Goals:**
 
 - One edge per source per run, in the common case.
-- Constant-time edge removal.
+- Constant-time edge removal if the back-index bookkeeping passes its benchmark gate; otherwise keep the existing removal behavior and its known-issue test.
 - Values, recompute counts and effect counts unchanged. The order test in `effect.spec.ts` keeps passing unchanged as a regression guard.
 
 **Non-Goals:**
@@ -47,7 +47,9 @@ Each computation keeps `_sourceSlots`, parallel to `_sources`: for source `i`, t
 
 ### 3. Land and measure them separately
 
-Decision 1 ships on its own. Decision 2 is kept only if the full benchmark shows no scenario regressing outside its run-to-run spread, the same rule `optimize-graph-hot-paths` used. The fan-out cost it fixes isn't in the benchmark's graphs, so its gain is shown by the known-issue test (element reads) and a fan-out timing script, while the benchmark guards against regressions.
+Decision 1 is measured on its own before Decision 2. Decision 2 is kept only if the full benchmark shows no scenario regressing outside its run-to-run spread, the same rule `optimize-graph-hot-paths` used. The fan-out cost it fixes isn't in the benchmark's graphs, so its gain is shown by the known-issue test (element reads) and a fan-out timing script, while the benchmark guards against regressions.
+
+If Decision 2 is rejected, revert its slot bookkeeping and slot-specific assertions, retain the general behavioral guards, and leave the linear-unlink test as an expected failure. Record the rejection and measurements here. Promote only the duplicate-read test and describe only common-case read deduplication in the changeset; do not claim constant-time removal or delete a known-issues file that still contains the unlink case. Completing this change then means the measured read-stamp optimization is finished, not that both initially proposed optimizations shipped.
 
 ## Risks / Trade-offs
 
@@ -58,4 +60,4 @@ Decision 1 ships on its own. Decision 2 is kept only if the full benchmark shows
 
 ## Migration Plan
 
-No API change. Ship as a `patch` changeset for `@signalis/core`. Each decision lands as its own commit, so either can be reverted alone.
+No API change. Ship as a `patch` changeset for `@signalis/core` describing only retained work: common-case read deduplication, plus constant-time removal only if Decision 2 survives its gate. The release wording must not promise deduplication across nested reads that overwrite the source stamp. Each retained decision lands as its own commit, so either can be reverted alone. Delete the known-issues file only after every case in it has been fixed and promoted; rejecting Decision 2 leaves its case open.

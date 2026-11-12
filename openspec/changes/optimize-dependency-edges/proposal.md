@@ -11,10 +11,10 @@ Values and run counts are unaffected; only the cost changes. Dynamic dependencie
 
 ## What Changes
 
-- A computation links each source once per run, however many times it reads it.
-- Removing an edge takes constant time, independent of how many observers the source has.
+- Repeated reads share one edge in the common case, when no nested computation reads the same source between them. Nested runs may still produce duplicates; values and run counts remain correct in either case.
+- Subject to the benchmark gate, removing an edge takes constant time, independent of how many observers the source has. If the additional bookkeeping regresses the full benchmark, retain today's removal path and leave that known issue open.
 - The order in which effects run is stated as unspecified everywhere, not only after a batch. Both changes can reorder a source's observer list when duplicates existed before, and observer order is what sets effect order.
-- The two known-issue edge tests move into the regular core specs as plain tests.
+- Each known-issue edge test moves into the regular core specs only when its optimization is retained. A rejected optimization keeps its expected-failure test and a recorded reason; no release note claims that case is fixed.
 
 No public API changes.
 
@@ -31,6 +31,6 @@ None. The batch spec's statement that effect order after a batch is unspecified 
 ## Impact
 
 - `packages/core/src/state.ts` (`markDependency`), `utils.ts` (`reconcileSources`, `unlinkObservers`, `spliceWhenKnown`), `derived.ts` and `reaction.ts` (saving and restoring the run id around a run, new edge fields).
-- Tests: `packages/core/tests/known-issues.spec.ts` (emptied and deleted once the store change also lands), `effect.spec.ts`, plus new edge tests.
-- Memory: one number per source node for the read stamp, and one number per edge on each side for the back-indices.
-- A `patch` changeset for `@signalis/core`.
+- Tests: `packages/core/tests/known-issues.spec.ts` (deleted only when both edge fixes are retained and the store change has removed its sections), `effect.spec.ts`, plus new edge tests.
+- Memory: one number per source node for the read stamp; back-indices add one number per edge on each side only if that optimization survives measurement.
+- A `patch` changeset for `@signalis/core` describing only the retained optimizations, with the nested-read limitation explicit.
