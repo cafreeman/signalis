@@ -106,6 +106,64 @@ update(store, (draft) => {
 });
 ```
 
+### Same-Value Writes
+
+Property observers are notified only when the new value differs by strict equality (`===`), just like ordinary signals:
+
+```typescript
+import { createStore, createEffect, update } from '@signalis/core';
+
+const store = createStore({ count: 0 });
+
+createEffect(() => {
+  console.log(store.count); // Initially logs 0
+});
+
+update(store, (draft) => {
+  draft.count = 0; // Same value: the effect does not run again
+});
+
+update(store, (draft) => {
+  draft.count = 1; // Changed value: the effect logs 1 once
+});
+```
+
+Objects and arrays compare by reference, not by contents. Assigning the same reference does not notify; replacing it with a distinct object or array does, even if its contents are equal.
+
+If you previously used same-value writes to force an effect to run, write a genuinely new value instead, or use a separate signal created with `createSignal(initialValue, false)` when every write must notify.
+
+### Key Enumeration
+
+`Object.keys`, `Object.entries`, `for...in`, and `Reflect.ownKeys` subscribe to the enumerated object's key set. Every reader stays subscribed across re-runs. Key-set observers are notified only when an own property is added or removed, or an array's length changes—not when an existing property's value changes.
+
+`Object.entries` also reads property values, so its observers still re-run when those values change:
+
+```typescript
+import { createStore, createEffect, update } from '@signalis/core';
+
+const store = createStore<Record<string, number>>({ count: 0 });
+
+createEffect(() => {
+  console.log('Keys:', Object.keys(store)); // Initially ['count']
+});
+
+createEffect(() => {
+  console.log('Entries:', Object.entries(store)); // Initially [['count', 0]]
+});
+
+update(store, (draft) => {
+  draft['count'] = 1; // Only the entries effect re-runs
+});
+
+update(store, (draft) => {
+  draft['other'] = 2; // Both effects re-run once, observing the completed update
+});
+```
+
+Deleting an existing property also notifies key-set readers. Assigning `undefined` through `update` deletes the property; removing an already absent property notifies neither key-set nor property-value observers.
+
+If you relied on key enumeration to detect value changes, read those values through the store inside the computation—for example, with `Object.entries`. Reading values from `unwrap(store)` or inside `untrack` does not subscribe to them.
+
 ## Working with Arrays
 
 Stores work great with arrays, both as properties of objects and as direct stores:
