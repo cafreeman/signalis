@@ -25,6 +25,21 @@ After a `reactor` component commits, it SHALL show the current value of every si
 - **WHEN** a `reactor` component starts reading a derived value on a re-render, and a layout effect writes a signal that derived value depends on before the re-render commits
 - **THEN** the component re-renders and shows the derived value's new result
 
+#### Scenario: A changed derived is recomputed by another reader before subscription
+
+- **WHEN** a component first renders a derived result of `0`, a layout effect changes its source, and another read recomputes the derived to `2` before the component subscribes
+- **THEN** the component re-renders and shows `2`, even though that other read already made the derived current
+
+#### Scenario: A derived is invalidated but its result is unchanged
+
+- **WHEN** a component renders a derived value, a layout effect changes an upstream signal before subscription, and the derived recomputes to the same result
+- **THEN** the component shows that result without an additional render solely for the upstream write
+
+#### Scenario: A caught derived error becomes a value before subscription
+
+- **WHEN** a component catches a derived's error and renders a fallback, then a layout effect changes its source and another reader successfully recomputes it before subscription
+- **THEN** the component re-renders and shows the successful value instead of retaining the fallback
+
 ### Requirement: useDerived values reflect writes between render and commit
 
 A derived value created with `useDerived` SHALL reflect every write made to its sources before the component that created it commits, and components that read it SHALL re-render to show its new result.
@@ -39,6 +54,11 @@ A derived value created with `useDerived` SHALL reflect every write made to its 
 - **WHEN** a `useDerived` value starts depending on a signal during a re-render, and a layout effect writes that signal before the re-render commits
 - **THEN** the component re-renders and shows the result computed from the written value
 
+#### Scenario: A render-phase state replay reuses a cached derived result
+
+- **WHEN** a component computes a `useDerived` result of `2` from a signal holding `1`, writes `5` to that signal, and adjusts its React state so React replays the render before subscription
+- **THEN** after commit the component shows `10`, even if the replay initially reused the cached `2`
+
 ### Requirement: A reactor component renders once on mount when nothing changes
 
 A `reactor` component SHALL render exactly once on mount when nothing it read changes between that render and its commit. Strict Mode's development-only remount, which disposes and recreates the component's subscription, MAY add a render.
@@ -47,6 +67,11 @@ A `reactor` component SHALL render exactly once on mount when nothing it read ch
 
 - **WHEN** a `reactor` component mounts outside Strict Mode and nothing writes a signal it read before it commits
 - **THEN** the component renders exactly once
+
+#### Scenario: First read computes a lazy derived
+
+- **WHEN** a component mounts outside Strict Mode, its render first computes a lazy `useDerived` value, and no source changes after being read
+- **THEN** the component shows the computed result and renders exactly once
 
 #### Scenario: Strict Mode remount
 
