@@ -108,7 +108,7 @@ update(store, (draft) => {
 
 ### Same-Value Writes
 
-Property observers are notified only when the new value differs by strict equality (`===`), just like ordinary signals:
+Property observers are notified only when the new value differs by strict equality (`===`), just like ordinary signals. Repeated `NaN` writes notify because `NaN !== NaN`, while `+0` and `-0` are treated as equal:
 
 ```typescript
 import { createStore, createEffect, update } from '@signalis/core';
@@ -131,6 +131,8 @@ update(store, (draft) => {
 Objects and arrays compare by reference, not by contents. Assigning the same reference does not notify; replacing it with a distinct object or array does, even if its contents are equal.
 
 If you previously used same-value writes to force an effect to run, write a genuinely new value instead, or use a separate signal created with `createSignal(initialValue, false)` when every write must notify.
+
+The notification rules and migration guidance in this section also apply to stores imported from `@signalis/react`, which re-exports `@signalis/core`. Both packages release in lockstep.
 
 ### Key Enumeration
 
