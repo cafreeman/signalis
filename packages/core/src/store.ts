@@ -50,16 +50,14 @@ function getSignalNode(nodesMap: SignalNodeMap, property: PropertyKey, value: un
     return result;
   }
 
-  const signal = createSignal(value, false);
+  const signal = createSignal(value);
   nodesMap[property] = signal;
   return signal;
 }
 
 function trackSelf(node: StoreNode) {
   const nodes = getSignalNodes(node);
-  if (!nodes[$SELF]) {
-    (nodes[$SELF] = createSignal()).value;
-  }
+  (nodes[$SELF] ??= createSignal()).value;
 }
 
 export const handler: ProxyHandler<StoreNode> = {
@@ -154,6 +152,7 @@ export const handler: ProxyHandler<StoreNode> = {
 export function setProperty(target: StoreNode, prop: PropertyKey, value: unknown) {
   const nodes = getSignalNodes(target);
   const length = target.length;
+  const hadOwnProperty = Object.hasOwn(target, prop);
 
   const prev = target[prop];
 
@@ -167,7 +166,8 @@ export function setProperty(target: StoreNode, prop: PropertyKey, value: unknown
 
   node.value = value;
 
-  if (Array.isArray(target) && target.length !== length) {
+  const lengthChanged = Array.isArray(target) && target.length !== length;
+  if (lengthChanged) {
     // Need to make sure we keep the lengths of arrays in sync between the underlying object
     // and the store node. By making an array's `length` property a signal node, we ensure that
     // its length is reactive and can be subscribed to
@@ -175,9 +175,9 @@ export function setProperty(target: StoreNode, prop: PropertyKey, value: unknown
     node.value = target.length;
   }
 
-  // If this node is tracking itself, we poke the underlying signal to indicate that something
-  // on it has changed.
-  if (nodes[$SELF]) {
+  // Key readers only need structural changes. Presence catches deletion of an undefined-valued
+  // key, while length catches array truncation, which removes indices without changing this key.
+  if (nodes[$SELF] && (hadOwnProperty !== Object.hasOwn(target, prop) || lengthChanged)) {
     nodes[$SELF].value = null;
   }
 }
